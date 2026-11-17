@@ -28,3 +28,13 @@ Run checks:
 go test ./...
 go vet ./...
 ```
+
+## Collections and history
+
+Use **New collection** in the sidebar to create a local collection. Give the current request a name and click **Save request** to add it to the selected collection. Select a saved request to reopen it, edit its name/method/URL/parameters/body, and click **Save request** to update it. Select a different collection before saving to move the request there. **New request** starts a separate request. Collections can be renamed or deleted; deleting a collection removes its saved requests but keeps history.
+
+The **History** tab records sent requests, timestamps, responses, and network errors, newest first. Select an item to restore its request and response. You can rename or delete history items, edit and resend their requests, or save an edited copy into a collection. Editing a reopened history request preserves the original history entry.
+
+Collections, history (including response bodies and headers), the current editor draft, and the JSON/raw view preference survive restarts. Draft edits save automatically; collection requests change when you click **Save request**. Requests still running when the app closes appear as interrupted in history on the next start.
+
+Data is stored locally in `relay/workspace.json` inside the OS user configuration directory (`$XDG_CONFIG_HOME` or `~/.config` on Linux). This file contains the full request and response contents. Saves use a private temporary file and an atomic replacement. Storage errors appear in the window; malformed or unsupported workspace files are left untouched instead of being reset.
