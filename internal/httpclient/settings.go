@@ -2,6 +2,7 @@ package httpclient
 
 import (
 	"context"
+	"crypto/tls"
 	"crypto/x509"
 	"errors"
 	"fmt"
@@ -31,6 +32,16 @@ func ErrorMessage(err error) string {
 	}
 	if errors.Is(err, context.Canceled) {
 		return "Request cancelled."
+	}
+	if errors.Is(err, ErrResponseTooLarge) {
+		return err.Error()
+	}
+	if errors.Is(err, syscall.ECONNRESET) || errors.Is(err, syscall.EPIPE) {
+		return "The server reset the connection. Any received response data is shown below."
+	}
+	var tlsRecord tls.RecordHeaderError
+	if errors.As(err, &tlsRecord) {
+		return "The server did not return a valid TLS response. Check whether this endpoint uses HTTP instead of HTTPS."
 	}
 	var timeout net.Error
 	if errors.Is(err, context.DeadlineExceeded) || (errors.As(err, &timeout) && timeout.Timeout()) {

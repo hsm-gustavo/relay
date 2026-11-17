@@ -4,12 +4,14 @@ import (
 	"bytes"
 	"context"
 	"encoding/json"
+	"errors"
 	"fmt"
 	"io"
 	"net/http"
 	"net/url"
 	"strings"
 	"time"
+	"unicode"
 )
 
 var Methods = []string{
@@ -34,7 +36,14 @@ type Request struct {
 	Timeout string // Empty uses the default 30 seconds; 0 disables the timeout.
 }
 
+const MaxResponseBytes = 16 << 20
+
+var ErrResponseTooLarge = errors.New("response exceeds the 16 MiB limit; only the first 16 MiB were retained")
+
 type Response struct {
+	Incomplete bool
+	BodyFile   string `json:",omitempty"` // Used by local workspace storage.
+
 	Status   string
 	Duration time.Duration
 	Headers  http.Header
@@ -109,7 +118,7 @@ func (r Request) Build(ctx context.Context) (*http.Request, error) {
 		req.SetBasicAuth(r.Auth.Username, r.Auth.Password)
 	case "Bearer":
 		token := strings.TrimSpace(r.Auth.Token)
-		if token == "" || strings.ContainsAny(token, " \t\r\n") {
+		if token == "" || strings.IndexFunc(token, func(r rune) bool { return unicode.IsSpace(r) || unicode.IsControl(r) }) >= 0 {
 			return nil, fmt.Errorf("enter a bearer token without spaces or line breaks")
 		}
 		req.Header.Set("Authorization", "Bearer "+token)
@@ -127,19 +136,23 @@ func Execute(client *http.Client, req *http.Request) (*Response, error) {
 		return nil, fmt.Errorf("send request: %w", err)
 	}
 	defer resp.Body.Close()
-	body, err := io.ReadAll(resp.Body)
-	if err != nil {
-		return nil, fmt.Errorf("read response: %w", err)
+	body, readErr := io.ReadAll(io.LimitReader(resp.Body, MaxResponseBytes+1))
+	result := &Response{Status: resp.Status, Duration: time.Since(start), Headers: resp.Header.Clone(), Body: body}
+	if len(body) > MaxResponseBytes {
+		result.Body = body[:MaxResponseBytes]
+		result.Incomplete = true
+		return result, ErrResponseTooLarge
 	}
-	return &Response{
-		Status: resp.Status, Duration: time.Since(start),
-		Headers: resp.Header.Clone(), Body: body,
-	}, nil
+	if readErr != nil {
+		result.Incomplete = true
+		return result, fmt.Errorf("read response: %w", readErr)
+	}
+	return result, nil
 }
 
 // FormatBody preserves non-JSON responses and the original bytes in raw mode.
 func FormatBody(body []byte, pretty bool) string {
-	if pretty {
+	if pretty && len(body) <= 64<<10 && safeJSONDepth(body) {
 		var formatted bytes.Buffer
 		if err := json.Indent(&formatted, body, "", "  "); err == nil {
 			return formatted.String()
@@ -152,4 +165,37 @@ func FormatHeaders(headers http.Header) string {
 	var formatted bytes.Buffer
 	_ = headers.Write(&formatted)
 	return formatted.String()
+}
+
+func safeJSONDepth(body []byte) bool {
+	depth := 0
+	maxDepth := 0
+	quoted, escaped := false, false
+	for _, b := range body {
+		if quoted {
+			if escaped {
+				escaped = false
+			} else if b == '\\' {
+				escaped = true
+			} else if b == '"' {
+				quoted = false
+			}
+			continue
+		}
+		switch b {
+		case '"':
+			quoted = true
+		case '{', '[':
+			depth++
+			if depth > maxDepth {
+				maxDepth = depth
+			}
+			if depth > 64 {
+				return false
+			}
+		case '}', ']':
+			depth--
+		}
+	}
+	return len(body)*(2*maxDepth+1) <= 256<<10
 }
