@@ -14,69 +14,46 @@ import (
 	"github.com/hsm-gustavo/relay/internal/workspace"
 )
 
-type workspaceView struct {
-	window                                               fyne.Window
-	client                                               *http.Client
-	store                                                *workspace.Store
-	content                                              fyne.CanvasObject
-	name, url, params, body                              *widget.Entry
-	method, format, collections                          *widget.Select
-	status, duration, size, requestError, storageError   *widget.Label
-	responseBody, responseHeaders                        *widget.TextGrid
-	savedList, historyList                               *widget.List
-	selectedCollection, selectedRequest, selectedHistory string
-	loading                                              bool
-	revision                                             uint64
-	send                                                 *widget.Button
+type requestEditor struct {
+	*workspaceView
+	draft                                                       workspace.Draft
+	tab                                                         *container.TabItem
+	name, url, params, body, username, password, token, timeout *widget.Entry
+	method, format, auth                                        *widget.Select
+	status, duration, size, requestError                        *widget.Label
+	responseBody, responseHeaders                               *widget.TextGrid
+	send, cancel, copyBody                                      *widget.Button
+	loading, closed                                             bool
+	revision                                                    uint64
+	cancelRun                                                   context.CancelFunc
 }
 
-func newWorkspaceView(w fyne.Window, client *http.Client, store *workspace.Store) *workspaceView {
-	v := &workspaceView{window: w, client: client, store: store, loading: true}
-	v.storageError = widget.NewLabel("")
-	v.storageError.Wrapping = fyne.TextWrapWord
-	editor := v.makeEditor()
-	sidebar := v.makeLibrary()
-	split := container.NewHSplit(sidebar, editor)
-	split.Offset = 0.25
-	v.content = container.NewBorder(v.storageError, nil, nil, nil, split)
-	v.loadDraft(store.State.Draft)
-	return v
-}
-
-func (v *workspaceView) persist() bool {
-	if err := v.store.Save(); err != nil {
-		v.storageError.SetText("Changes could not be saved: " + err.Error())
-		return false
-	}
-	v.storageError.SetText("")
-	return true
-}
-
-func (v *workspaceView) capture() {
-	d := &v.store.State.Draft
+func (v *requestEditor) capture() {
+	d := &v.draft
 	d.Name = v.name.Text
-	d.Request = httpclient.Request{Method: v.method.Selected, URL: v.url.Text, Params: v.params.Text, Body: v.body.Text}
+	d.Request = httpclient.Request{Method: v.method.Selected, URL: v.url.Text, Params: v.params.Text, Body: v.body.Text, Auth: httpclient.Auth{Type: v.auth.Selected, Username: v.username.Text, Password: v.password.Text, Token: v.token.Text}, Timeout: v.timeout.Text}
 	d.Raw = v.format.Selected == "Raw text"
 }
 
-func (v *workspaceView) changed(clearResponse bool) {
+func (v *requestEditor) changed(clearResponse bool) {
 	if v.loading {
 		return
 	}
 	v.capture()
 	v.revision++
 	if clearResponse {
-		v.store.State.Draft.Response = nil
-		v.store.State.Draft.Error = ""
+		v.draft.Response = nil
+		v.draft.Error = ""
 		v.showResult()
 	}
+	v.updateTitle()
 	v.persist()
 }
 
-func (v *workspaceView) loadDraft(d workspace.Draft) {
+func (v *requestEditor) loadDraft(d workspace.Draft) {
 	v.loading = true
 	v.revision++
-	v.store.State.Draft = d
+	v.draft = d
 	v.name.SetText(d.Name)
 	method := d.Request.Method
 	if method == "" {
@@ -86,6 +63,15 @@ func (v *workspaceView) loadDraft(d workspace.Draft) {
 	v.url.SetText(d.Request.URL)
 	v.params.SetText(d.Request.Params)
 	v.body.SetText(d.Request.Body)
+	auth := d.Request.Auth.Type
+	if auth == "" {
+		auth = "None"
+	}
+	v.auth.SetSelected(auth)
+	v.username.SetText(d.Request.Auth.Username)
+	v.password.SetText(d.Request.Auth.Password)
+	v.token.SetText(d.Request.Auth.Token)
+	v.timeout.SetText(d.Request.Timeout)
 	if d.Raw {
 		v.format.SetSelected("Raw text")
 	} else {
@@ -94,22 +80,33 @@ func (v *workspaceView) loadDraft(d workspace.Draft) {
 	v.showResult()
 	v.loading = false
 	v.capture()
+	v.updateTitle()
 }
 
-func (v *workspaceView) showResult() {
-	d := v.store.State.Draft
+func (v *requestEditor) showResult() {
+	d := v.draft
 	v.status.SetText("Status: —")
+	if v.cancelRun != nil {
+		v.status.SetText("Sending…")
+	}
 	v.duration.SetText("Time: —")
 	v.size.SetText("Body size: —")
 	v.responseBody.SetText("")
 	v.responseHeaders.SetText("")
 	v.requestError.SetText(d.Error)
+	if d.Error == "" {
+		v.requestError.Hide()
+	} else {
+		v.requestError.Show()
+	}
+	v.copyBody.Disable()
 	if d.Error != "" {
 		v.status.SetText("Request failed")
 	}
 	if d.Response == nil {
 		return
 	}
+	v.copyBody.Enable()
 	result := d.Response
 	v.status.SetText("Status: " + result.Status)
 	v.duration.SetText(fmt.Sprintf("Time: %.1f ms", float64(result.Duration)/float64(time.Millisecond)))
@@ -118,7 +115,7 @@ func (v *workspaceView) showResult() {
 	v.responseHeaders.SetText(httpclient.FormatHeaders(result.Headers))
 }
 
-func (v *workspaceView) makeEditor() fyne.CanvasObject {
+func (v *requestEditor) makeEditor() fyne.CanvasObject {
 	v.name = widget.NewEntry()
 	v.name.SetPlaceHolder("Request name")
 	v.url = widget.NewEntry()
@@ -140,12 +137,15 @@ func (v *workspaceView) makeEditor() fyne.CanvasObject {
 	requestTabs := container.NewAppTabs(
 		container.NewTabItem("Query params", container.NewBorder(paramsHelp, nil, nil, nil, v.params)),
 		container.NewTabItem("JSON body", container.NewBorder(bodyHelp, nil, nil, nil, v.body)),
+		container.NewTabItem("Authentication", v.authSettings()),
+		container.NewTabItem("Settings", v.timeoutSettings()),
 	)
 	v.status = widget.NewLabel("")
 	v.duration = widget.NewLabel("")
 	v.size = widget.NewLabel("")
 	v.requestError = widget.NewLabel("")
 	v.requestError.Wrapping = fyne.TextWrapWord
+	v.requestError.Importance = widget.DangerImportance
 	v.responseBody = widget.NewTextGrid()
 	v.responseBody.Scroll = fyne.ScrollBoth
 	v.responseHeaders = widget.NewTextGrid()
@@ -159,39 +159,56 @@ func (v *workspaceView) makeEditor() fyne.CanvasObject {
 		v.persist()
 	})
 	v.format.PlaceHolder = "Formatted JSON"
+	v.copyBody = widget.NewButton("Copy response body", func() { fyne.CurrentApp().Clipboard().SetContent(v.responseBody.Text()) })
 	responseTabs := container.NewAppTabs(
-		container.NewTabItem("Response", container.NewBorder(container.NewHBox(v.format, widget.NewButton("Copy body", func() {
-			v.window.Clipboard().SetContent(v.responseBody.Text())
-		})), nil, nil, nil, v.responseBody)),
+		container.NewTabItem("Response", container.NewBorder(container.NewHBox(v.format, v.copyBody), nil, nil, nil, v.responseBody)),
 		container.NewTabItem("Headers", container.NewBorder(widget.NewButton("Copy headers", func() {
-			v.window.Clipboard().SetContent(v.responseHeaders.Text())
+			fyne.CurrentApp().Clipboard().SetContent(v.responseHeaders.Text())
 		}), nil, nil, nil, v.responseHeaders)),
 	)
 	v.send = widget.NewButton("Send", v.execute)
 	v.send.Importance = widget.HighImportance
+	v.cancel = widget.NewButton("Cancel", func() {
+		if v.cancelRun != nil {
+			v.cancelRun()
+		}
+	})
+	v.cancel.Disable()
 	v.url.OnSubmitted = func(string) {
 		if !v.send.Disabled() {
 			v.execute()
 		}
 	}
 	nameBar := container.NewBorder(nil, nil, nil, container.NewHBox(
-		widget.NewButton("New request", v.newRequest), widget.NewButton("Save request", v.saveRequest)), v.name)
-	requestBar := container.NewBorder(nil, nil, v.method, v.send, v.url)
+		widget.NewButton("New tab", v.newRequest), widget.NewButton("Save request", v.saveRequest)), v.name)
+	requestBar := container.NewBorder(nil, nil, v.method, container.NewHBox(v.send, v.cancel), v.url)
 	panels := container.NewVSplit(requestTabs, container.NewBorder(container.NewHBox(v.status, v.duration, v.size), nil, nil, nil, responseTabs))
 	panels.Offset = 0.4
 	return container.NewBorder(container.NewVBox(nameBar, requestBar, v.requestError), nil, nil, nil, panels)
 }
 
-func (v *workspaceView) execute() {
+func (v *requestEditor) execute() {
+	if v.cancelRun != nil {
+		return
+	}
 	v.capture()
-	snapshot := v.store.State.Draft.Item
-	req, err := snapshot.Request.Build(context.Background())
-	v.store.State.Draft.Response = nil
-	v.store.State.Draft.Error = ""
+	snapshot := v.draft.Item
+	timeout, err := snapshot.Request.TimeoutDuration()
 	if err != nil {
-		v.store.State.Draft.Error = err.Error()
-		v.showResult()
-		v.persist()
+		v.failValidation(err)
+		return
+	}
+	var ctx context.Context
+	var cancel context.CancelFunc
+	if timeout > 0 {
+		ctx, cancel = context.WithTimeout(context.Background(), timeout)
+	} else {
+		ctx, cancel = context.WithCancel(context.Background())
+	}
+	req, err := snapshot.Request.Build(ctx)
+	if err != nil {
+		cancel()
+		v.failValidation(err)
 		return
 	}
 	v.selectedHistory = ""
@@ -199,28 +216,46 @@ func (v *workspaceView) execute() {
 	id := v.store.State.AddHistory(snapshot)
 	v.historyList.Refresh()
 	if !v.persist() {
+		cancel()
+		v.store.State.DeleteHistory(id)
+		v.historyList.Refresh()
 		return
 	}
 	revision := v.revision
+	v.cancelRun = cancel
+	v.draft.Response, v.draft.Error = nil, ""
 	v.showResult()
-	v.status.SetText("Sending…")
+	v.updateTitle()
 	v.send.Disable()
+	v.cancel.Enable()
+	// The context applies the per-request setting without a shared client timeout capping it.
+	client := *v.client
+	client.Timeout = 0
 	go func() {
-		result, err := httpclient.Execute(v.client, req)
-		fyne.Do(func() {
-			v.send.Enable()
-			message := ""
-			if err != nil {
-				message = err.Error()
-			}
+		defer cancel()
+		result, err := httpclient.Execute(&client, req)
+		v.dispatch(func() {
+			v.cancelRun = nil
+			message := httpclient.ErrorMessage(err)
 			v.store.State.CompleteHistory(id, result, message)
-			if revision == v.revision {
-				v.store.State.Draft.Response = result
-				v.store.State.Draft.Error = message
+			if !v.closed {
+				v.send.Enable()
+				v.cancel.Disable()
+				if revision == v.revision {
+					v.draft.Response, v.draft.Error = result, message
+				}
 				v.showResult()
+				v.updateTitle()
 			}
 			v.historyList.Refresh()
 			v.persist()
 		})
 	}()
+}
+
+func (v *requestEditor) failValidation(err error) {
+	v.draft.Response = nil
+	v.draft.Error = err.Error()
+	v.showResult()
+	v.persist()
 }

@@ -3,7 +3,6 @@ package main
 import (
 	"fmt"
 	"net/http"
-	"time"
 
 	"fyne.io/fyne/v2"
 	"fyne.io/fyne/v2/app"
@@ -21,10 +20,15 @@ func main() {
 		var store *workspace.Store
 		store, err = workspace.Open(path)
 		if err == nil {
-			view := newWorkspaceView(w, &http.Client{Timeout: 30 * time.Second}, store)
+			view := newWorkspaceView(w, &http.Client{}, store)
 			w.SetContent(view.content)
 			w.SetCloseIntercept(func() {
 				if view.persist() {
+					for _, editor := range view.editors {
+						if editor.cancelRun != nil {
+							editor.cancelRun()
+						}
+					}
 					w.SetCloseIntercept(nil)
 					w.Close()
 				}

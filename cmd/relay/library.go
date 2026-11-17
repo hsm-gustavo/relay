@@ -101,7 +101,7 @@ func (v *workspaceView) makeLibrary() fyne.CanvasObject {
 		}
 		item := c.Requests[i]
 		v.selectedRequest = item.ID
-		v.loadDraft(workspace.Draft{Item: item, CollectionID: c.ID, Raw: v.store.State.Draft.Raw})
+		v.openDraft(workspace.Draft{Item: item, CollectionID: c.ID, Raw: v.active.draft.Raw})
 		v.persist()
 	}
 	newCollection := widget.NewButton("New collection", func() {
@@ -140,6 +140,12 @@ func (v *workspaceView) makeLibrary() fyne.CanvasObject {
 				return
 			}
 			v.store.State.DeleteCollection(id)
+			for _, editor := range v.editors {
+				if editor.draft.CollectionID == id {
+					editor.draft.CollectionID = ""
+					editor.draft.ID = ""
+				}
+			}
 			v.selectedRequest = ""
 			v.savedList.UnselectAll()
 			v.refreshCollections()
@@ -156,6 +162,11 @@ func (v *workspaceView) makeLibrary() fyne.CanvasObject {
 				return
 			}
 			v.store.State.DeleteRequest(collectionID, id)
+			for _, editor := range v.editors {
+				if editor.draft.ID == id {
+					editor.draft.ID = ""
+				}
+			}
 			v.selectedRequest = ""
 			v.savedList.UnselectAll()
 			v.savedList.Refresh()
@@ -186,9 +197,9 @@ func (v *workspaceView) makeLibrary() fyne.CanvasObject {
 	v.historyList.OnSelected = func(i widget.ListItemID) {
 		item := v.store.State.History[i]
 		v.selectedHistory = item.ID
-		draft := workspace.Draft{Item: item.Item, Response: item.Response, Error: item.Error, Raw: v.store.State.Draft.Raw}
+		draft := workspace.Draft{Item: item.Item, Response: item.Response, Error: item.Error, Raw: v.active.draft.Raw}
 		draft.ID = "" // Saving history creates a collection request rather than modifying another saved item.
-		v.loadDraft(draft)
+		v.openDraft(draft)
 		v.persist()
 	}
 	renameHistory := widget.NewButton("Rename", func() {
@@ -237,13 +248,13 @@ func (v *workspaceView) newRequest() {
 	v.savedList.UnselectAll()
 	v.historyList.UnselectAll()
 	v.selectedRequest, v.selectedHistory = "", ""
-	v.loadDraft(workspace.Draft{Item: workspace.Item{Request: httpclient.Request{Method: "GET"}}, Raw: v.store.State.Draft.Raw})
+	v.openDraft(workspace.Draft{Item: workspace.Item{Request: httpclient.Request{Method: "GET"}}, Raw: v.active.draft.Raw})
 	v.persist()
 }
 
 func (v *workspaceView) saveRequest() {
-	v.capture()
-	d := &v.store.State.Draft
+	v.active.capture()
+	d := &v.active.draft
 	item, err := v.store.State.SaveRequest(v.selectedCollection, d.ID, d.Name, d.Request)
 	if err != nil {
 		dialog.ShowError(err, v.window)
