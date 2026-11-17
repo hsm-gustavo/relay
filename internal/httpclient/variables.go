@@ -24,6 +24,13 @@ func ValidVariableName(name string) bool {
 // Resolve substitutes values once in a copy. Templates and environment values
 // are never modified, and variable values are literal rather than recursive.
 func (r Request) Resolve(variables map[string]string) (Request, error) {
+	result, _, err := r.ResolveTracked(variables)
+	return result, err
+}
+
+// ResolveTracked also reports referenced names, so session-derived values can stay off disk.
+func (r Request) ResolveTracked(variables map[string]string) (Request, map[string]bool, error) {
+	used := make(map[string]bool)
 	fields := []struct {
 		name   string
 		target *string
@@ -46,16 +53,16 @@ func (r Request) Resolve(variables map[string]string) (Request, error) {
 		}{"bearer token", &r.Auth.Token})
 	}
 	for _, field := range fields {
-		value, err := substitute(*field.target, variables)
+		value, err := substitute(*field.target, variables, used)
 		if err != nil {
-			return Request{}, fmt.Errorf("%s: %w", field.name, err)
+			return Request{}, used, fmt.Errorf("%s: %w", field.name, err)
 		}
 		*field.target = value
 	}
-	return r, nil
+	return r, used, nil
 }
 
-func substitute(text string, variables map[string]string) (string, error) {
+func substitute(text string, variables map[string]string, used map[string]bool) (string, error) {
 	var output strings.Builder
 	for {
 		start := strings.Index(text, "{{")
@@ -73,6 +80,7 @@ func substitute(text string, variables map[string]string) (string, error) {
 		if !ValidVariableName(name) {
 			return "", fmt.Errorf("invalid variable name %q", name)
 		}
+		used[name] = true
 		value, ok := variables[name]
 		if !ok {
 			return "", fmt.Errorf("undefined variable %q; select an environment that defines it", name)

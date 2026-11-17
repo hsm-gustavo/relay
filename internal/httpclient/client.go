@@ -6,6 +6,7 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
+	"github.com/hsm-gustavo/relay/internal/extraction"
 	"io"
 	"net/http"
 	"net/url"
@@ -27,8 +28,9 @@ type Auth struct {
 }
 
 type Request struct {
-	Method string
-	URL    string
+	Extract []extraction.Rule `json:",omitempty"`
+	Method  string
+	URL     string
 	// Params contains one unescaped key=value pair per line. Duplicate keys are allowed.
 	Params  string
 	Body    string
@@ -198,4 +200,13 @@ func safeJSONDepth(body []byte) bool {
 		}
 	}
 	return len(body)*(2*maxDepth+1) <= 256<<10
+}
+
+func (r Request) HasEnabledExtractionRules() bool {
+	for _, rule := range r.Extract {
+		if !rule.Disabled {
+			return true
+		}
+	}
+	return false
 }

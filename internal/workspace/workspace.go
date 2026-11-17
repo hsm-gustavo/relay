@@ -27,6 +27,7 @@ type Collection struct {
 }
 
 type HistoryItem struct {
+	SessionOnly     bool `json:",omitempty"`
 	EnvironmentName string
 	ResolvedRequest *httpclient.Request
 	Item
@@ -37,6 +38,7 @@ type HistoryItem struct {
 }
 
 type Draft struct {
+	SessionOnly     bool `json:",omitempty"`
 	EnvironmentName string
 	TabID           string
 	Raw             bool

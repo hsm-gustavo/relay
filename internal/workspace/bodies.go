@@ -20,6 +20,26 @@ func (s *Store) snapshot() (State, error) {
 	state := s.State
 	state.Tabs = append([]Draft(nil), state.Tabs...)
 	state.History = append([]HistoryItem(nil), state.History...)
+	state.Draft.SessionOnly = state.Draft.SessionOnly || state.Draft.Request.HasEnabledExtractionRules()
+	if state.Draft.SessionOnly {
+		state.Draft.Response = nil
+		state.Draft.Error = ""
+	}
+	for i := range state.Tabs {
+		state.Tabs[i].SessionOnly = state.Tabs[i].SessionOnly || state.Tabs[i].Request.HasEnabledExtractionRules()
+		if state.Tabs[i].SessionOnly {
+			state.Tabs[i].Response = nil
+			state.Tabs[i].Error = ""
+		}
+	}
+	for i := range state.History {
+		state.History[i].SessionOnly = state.History[i].SessionOnly || state.History[i].Request.HasEnabledExtractionRules()
+		if state.History[i].SessionOnly {
+			state.History[i].Response = nil
+			state.History[i].ResolvedRequest = nil
+			state.History[i].Error = ""
+		}
+	}
 	snapshot := func(r **httpclient.Response) error {
 		if *r == nil || len((*r).Body) == 0 {
 			return nil
