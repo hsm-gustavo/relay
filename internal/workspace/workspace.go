@@ -38,7 +38,8 @@ type HistoryItem struct {
 }
 
 type Draft struct {
-	SessionOnly     bool `json:",omitempty"`
+	ResponseMode    string `json:",omitempty"`
+	SessionOnly     bool   `json:",omitempty"`
 	EnvironmentName string
 	TabID           string
 	Raw             bool

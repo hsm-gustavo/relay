@@ -127,7 +127,7 @@ func TestConcurrentTabsCancelAndCopyResponse(t *testing.T) {
 	if got := app.Clipboard().Content(); got != "{\n  \"ok\": true\n}" {
 		t.Fatalf("formatted clipboard = %q", got)
 	}
-	second.format.SetSelected("Raw text")
+	second.format.SetSelected("Raw")
 	second.copyBody.OnTapped()
 	if got := app.Clipboard().Content(); got != `{"ok":true}` {
 		t.Fatalf("raw clipboard = %q", got)

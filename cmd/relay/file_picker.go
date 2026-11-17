@@ -2,6 +2,7 @@ package main
 
 import (
 	"fmt"
+	"io"
 
 	"fyne.io/fyne/v2"
 	"fyne.io/fyne/v2/dialog"
@@ -27,4 +28,16 @@ func chooseFyneUploadFile(window fyne.Window, callback func(string, error)) {
 		}
 		callback(uri.Path(), nil)
 	}, window)
+}
+
+func chooseFyneResponseWriter(window fyne.Window, name string, callback func(io.WriteCloser, error)) {
+	picker := dialog.NewFileSave(func(writer fyne.URIWriteCloser, err error) {
+		if writer == nil {
+			callback(nil, err)
+		} else {
+			callback(writer, err)
+		}
+	}, window)
+	picker.SetFileName(name)
+	picker.Show()
 }

@@ -20,7 +20,7 @@ tag=fyne
 
 In **Body**, choose JSON, URL-encoded, or multipart Content-Type. JSON remains the default and preserves existing requests; an empty JSON editor sends no body.
 
-The response panel shows the HTTP status, total transfer time, and received body size in bytes (after automatic decompression, excluding headers). View response headers in the **Headers** tab. Switch between **Formatted JSON** and **Raw text**; non-JSON responses display as text in either mode. Copy buttons copy the displayed body or headers. HTTP error responses remain inspectable; validation and network errors appear above the editors.
+The response panel shows the HTTP status, total transfer time, and received body size in bytes (after automatic decompression, excluding headers). View response headers in the **Headers** tab. JSON responses offer **Pretty**, **Raw**, and **Tree** modes. Textual responses provide Raw, with safe Pretty formatting also available for XML. Copy response body copies all retained text (formatted in Pretty), while Copy headers copies all response headers. HTTP error responses remain inspectable; validation and network errors appear above the editors.
 
 Run checks:
 
@@ -57,7 +57,7 @@ Formatted JSON responses highlight object keys, strings, numbers, booleans, and 
 
 ## Large responses and failed transfers
 
-The response view uses a bounded preview (up to 4,096 characters, 120 columns per line, and 60 lines) so minified HTML and large JSON do not freeze the window. The preview explains when it is limited. Large or deeply nested JSON remains raw to avoid expensive formatting. **Copy response body** copies the full retained body, not just the preview. Header previews are bounded too, while **Copy headers** copies all headers.
+The response view uses small text pages (up to 4,096 characters / 60 lines and a bounded grid-cell budget), with horizontal/vertical scrolling and previous/next page controls, so minified HTML and large JSON do not freeze the window. Pages preserve the source characters without inserting newlines; the viewer explains preview and search limits. Large or deeply nested JSON remains raw to avoid expensive formatting. **Copy response body** copies the full retained body, not just the preview. Header previews are bounded too, while **Copy headers** copies all headers.
 
 Responses retain up to 16 MiB of decompressed body data. Transfers exceeding that limit stop with an explicit incomplete-response message. If a read fails, times out, or is cancelled after headers arrive, the received status, headers, and partial body remain available alongside the error. Body size then describes the retained bytes, not the complete server response.
 
@@ -130,3 +130,26 @@ curl -F 'description=Profile photo' -F 'image=@/path/to/photo.png' https://examp
 ```
 
 Importing these commands creates editable form fields, never reads file contents, and never sends the request. JSON imports and saved JSON requests continue to work.
+
+## Advanced response viewer
+
+JSON responses (`application/json`, `text/json`, and structured types such as `application/problem+json`) offer **Pretty**, **Raw**, and **Tree**. With no Content-Type, valid JSON is detected automatically. Pretty reuses the existing indentation and syntax colors. Raw displays the payload retained by the HTTP client without reformatting; it refers to the representation available after transport processing such as automatic gzip decompression. Tree uses expandable objects and arrays, array indices, and distinct colors for strings, numbers, booleans, and null. Numbers retain their original JSON spelling, and object order and duplicate keys are preserved in Tree. All views are read-only and leave the original bytes unchanged.
+
+Use the search field or **Ctrl+F** (**Cmd+F** also works on macOS) to search Pretty or Raw text. Search uses Unicode simple case folding, with Previous/Next navigation, a match count, and highlighting of the current match. Find from Tree switches to Raw. Search navigates to a page containing the match; it does not rewrite the original text. TextGrid does not provide text selection, so **Copy response body** copies all retained text, rather than a selection. In Pretty it copies the formatted representation when formatting was within the limit; Tree copies Raw JSON.
+
+Text, HTML, and XML display as source, preserving line breaks in Raw. Valid XML can be safely formatted using Go’s XML tokenizer. XML directives, namespaces, invalid XML, or formatting limits fall back to Raw to preserve the source representation safely. HTML scripts, SVG, PDF, and external resources are never executed or loaded. Non-UTF-8 or control-heavy textual bodies are offered as binary data for saving instead of being shown as gibberish. Invalid JSON falls back to text with an explanatory note.
+
+PNG, JPEG, and GIF responses get an aspect-preserving image preview when decoding is supported (GIF shows the first frame). Unsupported/invalid/oversized images remain saveable. PDF, ZIP, octet-stream, and other binary responses show their Content-Type and retained size with Save, not a text dump. Empty responses display **This response has no body.** Status, duration, retained body size, Content-Type, environment provenance, and response headers remain available with their existing semantics.
+
+**Save response…** suggests a Content-Type-appropriate extension and saves the original retained bytes, never Pretty or Tree output. Linux uses the native desktop portal when available, with Fyne’s Save dialog as fallback. Writing runs in the background and write/close failures are reported. For an incomplete capture, the button says **Save partial response…**, the filename includes `.partial`, and the viewer states that only retained bytes can be saved; it does not promise a complete file.
+
+Processing limits keep the UI responsive:
+
+- Text navigation and search cover the first 256 KiB, with at most 10,000 non-overlapping matches and a 256-character search term.
+- Pretty JSON formatting keeps the existing 64 KiB input and bounded depth/expansion checks. Larger JSON falls back to Raw even in Pretty mode; copying then uses all retained Raw bytes.
+- Tree is limited to 256 KiB input, 5,000 nodes, and 64 levels. Individual nodes can be expanded/collapsed; excessively long row labels are shortened visually.
+- XML formatting accepts up to 64 KiB input, 64 levels, and 256 KiB output.
+- Image previews accept up to 8 MiB and 16 million pixels.
+- Expensive preparation, image decoding, long-text search, and saving run off the UI thread. At most two expensive preparations run concurrently; queued stale work is cancelled, and generation checks prevent stale preparation/search results from replacing a newer response. Tiny bounded textual responses prepare directly without a worker round trip.
+
+The existing 16 MiB capture limit and response-body persistence remain unchanged. Preview limits do not remove retained bytes: Copy/Save operate on all retained data. Session-only response protection from extraction also remains unchanged; explicitly saving or copying a response is a separate user action.

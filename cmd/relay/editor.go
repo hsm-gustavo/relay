@@ -15,10 +15,14 @@ import (
 	"fyne.io/fyne/v2/widget"
 
 	"github.com/hsm-gustavo/relay/internal/httpclient"
+	"github.com/hsm-gustavo/relay/internal/responseview"
 	"github.com/hsm-gustavo/relay/internal/workspace"
 )
 
 type requestEditor struct {
+	viewer                  *responseViewer
+	responseTabs            *container.AppTabs
+	contentType             *widget.Label
 	bodyType                *widget.Select
 	formFields              []httpclient.FormField
 	formBox                 *fyne.Container
@@ -44,7 +48,8 @@ func (v *requestEditor) capture() {
 	d := &v.draft
 	d.Name = v.name.Text
 	d.Request = httpclient.Request{Method: v.method.Selected, URL: v.url.Text, Params: v.params.Text, Body: v.body.Text, Auth: httpclient.Auth{Type: v.auth.Selected, Username: v.username.Text, Password: v.password.Text, Token: v.token.Text}, Timeout: v.timeout.Text, BodyType: v.bodyType.Selected, FormFields: append([]httpclient.FormField(nil), v.formFields...), Extract: append([]extraction.Rule(nil), v.extractRules...)}
-	d.Raw = v.format.Selected == "Raw text"
+	d.Raw = v.format.Selected == responseview.Raw
+	d.ResponseMode = v.format.Selected
 }
 
 func (v *requestEditor) changed(clearResponse bool) {
@@ -90,11 +95,17 @@ func (v *requestEditor) loadDraft(d workspace.Draft) {
 	v.password.SetText(d.Request.Auth.Password)
 	v.token.SetText(d.Request.Auth.Token)
 	v.timeout.SetText(d.Request.Timeout)
-	if d.Raw {
-		v.format.SetSelected("Raw text")
-	} else {
-		v.format.SetSelected("Formatted JSON")
+	mode := d.ResponseMode
+	if mode == "" {
+		mode = responseview.Pretty
+		if d.Raw {
+			mode = responseview.Raw
+		}
 	}
+	if mode != responseview.Pretty && mode != responseview.Raw && mode != responseview.Tree {
+		mode = responseview.Pretty
+	}
+	v.format.SetSelected(mode)
 	v.showResult()
 	v.loading = false
 	v.capture()
@@ -112,12 +123,8 @@ func (v *requestEditor) showResult() {
 	}
 	v.duration.SetText("Time: —")
 	v.size.SetText("Body size: —")
-	v.responseBody.SetText("")
-	v.previewNote.SetText("")
-	v.previewNote.Hide()
-	v.headerNote.SetText("")
-	v.headerNote.Hide()
-	v.responseHeaders.SetText("")
+	v.viewer.setResponse(d.Response)
+
 	v.requestError.SetText(d.Error)
 	if d.Error == "" {
 		v.requestError.Hide()
@@ -137,7 +144,6 @@ func (v *requestEditor) showResult() {
 		v.previewNote.SetText("Session-only response was not retained. Send again to obtain fresh values.")
 		v.previewNote.Show()
 	}
-	v.copyBody.Disable()
 	if d.Error != "" {
 		v.statusColors.role = red
 		v.status.SetText("Request failed")
@@ -145,29 +151,17 @@ func (v *requestEditor) showResult() {
 	if d.Response == nil {
 		return
 	}
-	v.copyBody.Enable()
 	result := d.Response
 	v.statusColors.role = statusRole(result.Status)
 	v.status.SetText("Status: " + result.Status)
 	v.duration.SetText(fmt.Sprintf("Time: %.1f ms", float64(result.Duration)/float64(time.Millisecond)))
 	v.size.SetText(fmt.Sprintf("Body size: %d bytes", len(result.Body)))
-	text, note, highlight := responsePreview(result.Body, d.Raw)
-	colorJSON(v.responseBody, text, highlight)
-	if note != "" {
-		v.previewNote.SetText(note)
-		v.previewNote.Show()
-	}
+
 	if result.Incomplete {
 		v.statusColors.role = red
 		v.status.SetText("Status: " + result.Status + " (incomplete)")
 	}
-	headers, limited := boundedPreview(httpclient.FormatHeaders(result.Headers))
-	v.responseHeaders.SetText(headers)
-	if limited {
-		v.headerNote.SetText("Header preview limited. Copy headers copies all response headers.")
-		v.headerNote.Show()
-	}
-	colorHeaderKeys(v.responseHeaders)
+
 }
 
 func (v *requestEditor) makeEditor() fyne.CanvasObject {
@@ -211,35 +205,24 @@ func (v *requestEditor) makeEditor() fyne.CanvasObject {
 	v.requestError = widget.NewLabel("")
 	v.requestError.Wrapping = fyne.TextWrapWord
 	v.requestError.Importance = widget.DangerImportance
-	v.responseBody = widget.NewTextGrid()
-	v.responseBody.Scroll = fyne.ScrollBoth
+	responseContent := newResponseViewer(v)
 	v.responseHeaders = widget.NewTextGrid()
 	v.responseHeaders.Scroll = fyne.ScrollBoth
-	v.format = widget.NewSelect([]string{"Formatted JSON", "Raw text"}, func(string) {
-		if v.loading {
-			return
-		}
-		v.capture()
-		v.showResult()
-		v.persist()
-	})
-	v.format.PlaceHolder = "Formatted JSON"
-	v.copyBody = widget.NewButton("Copy response body", func() {
-		if result := v.draft.Response; result != nil {
-			fyne.CurrentApp().Clipboard().SetContent(httpclient.FormatBody(result.Body, !v.draft.Raw))
-		}
-	})
 	v.headerNote = widget.NewLabel("")
 	v.headerNote.Wrapping = fyne.TextWrapWord
 	v.headerNote.Hide()
-	v.previewNote = widget.NewLabel("")
-	v.previewNote.Wrapping = fyne.TextWrapWord
-	v.previewNote.Hide()
-	responseTabs := container.NewAppTabs(
-		container.NewTabItem("Response", container.NewBorder(container.NewVBox(container.NewHBox(v.format, v.copyBody), v.previewNote), nil, nil, nil, v.responseBody)),
+	v.responseTabs = container.NewAppTabs(
+		container.NewTabItem("Response", responseContent),
 		container.NewTabItem("Headers", container.NewBorder(container.NewVBox(widget.NewButton("Copy headers", func() {
 			if result := v.draft.Response; result != nil {
-				fyne.CurrentApp().Clipboard().SetContent(httpclient.FormatHeaders(result.Headers))
+				go func() {
+					text := httpclient.FormatHeaders(result.Headers)
+					v.dispatch(func() {
+						if !v.closed {
+							fyne.CurrentApp().Clipboard().SetContent(text)
+						}
+					})
+				}()
 			}
 		}), v.headerNote), nil, nil, nil, v.responseHeaders)),
 	)
@@ -259,7 +242,7 @@ func (v *requestEditor) makeEditor() fyne.CanvasObject {
 	nameBar := container.NewBorder(nil, nil, nil, container.NewHBox(
 		widget.NewButton("New tab", v.newRequest), widget.NewButton("Save request", v.saveRequest)), v.name)
 	requestBar := container.NewBorder(nil, nil, container.NewThemeOverride(v.method, v.methodColors), container.NewHBox(v.send, v.cancel), v.url)
-	panels := container.NewVSplit(requestTabs, container.NewBorder(container.NewVBox(container.NewHBox(container.NewThemeOverride(v.status, v.statusColors), v.duration, v.size), v.environmentInfo), nil, nil, nil, responseTabs))
+	panels := container.NewVSplit(requestTabs, container.NewBorder(container.NewVBox(container.NewBorder(nil, nil, container.NewHBox(container.NewThemeOverride(v.status, v.statusColors), v.duration, v.size), nil, v.contentType), v.environmentInfo), nil, nil, nil, v.responseTabs))
 	panels.Offset = 0.4
 	return container.NewBorder(container.NewVBox(nameBar, requestBar, v.requestError), nil, nil, nil, panels)
 }

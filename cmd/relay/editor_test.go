@@ -68,7 +68,7 @@ func TestHistoryReopenEditAndSave(t *testing.T) {
 	if view.active.url.Text != item.Request.URL || view.active.status.Text != "Status: 200 OK" || view.active.responseBody.Text() != "{\n  \"ok\": true\n}" {
 		t.Fatal("history request and response did not reopen")
 	}
-	view.active.format.SetSelected("Raw text")
+	view.active.format.SetSelected("Raw")
 	if view.active.responseBody.Text() != `{"ok":true}` {
 		t.Fatal("raw response changed")
 	}

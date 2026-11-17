@@ -3,10 +3,12 @@ package main
 import (
 	"crypto/rand"
 	"net/http"
+	"runtime"
 	"strings"
 
 	"fyne.io/fyne/v2"
 	"fyne.io/fyne/v2/container"
+	"fyne.io/fyne/v2/driver/desktop"
 	"fyne.io/fyne/v2/widget"
 
 	"github.com/hsm-gustavo/relay/internal/httpclient"
@@ -71,6 +73,18 @@ func newWorkspaceView(w fyne.Window, client *http.Client, store *workspace.Store
 	split := container.NewHSplit(sidebar, v.tabs)
 	split.Offset = 0.25
 	v.content = container.NewBorder(container.NewVBox(v.environmentBar(), v.storageError), nil, nil, nil, split)
+	w.Canvas().AddShortcut(&desktop.CustomShortcut{KeyName: fyne.KeyF, Modifier: fyne.KeyModifierControl}, func(fyne.Shortcut) {
+		if v.active != nil {
+			v.active.viewer.focusSearch()
+		}
+	})
+	if runtime.GOOS == "darwin" {
+		w.Canvas().AddShortcut(&desktop.CustomShortcut{KeyName: fyne.KeyF, Modifier: fyne.KeyModifierSuper}, func(fyne.Shortcut) {
+			if v.active != nil {
+				v.active.viewer.focusSearch()
+			}
+		})
+	}
 	v.loading = false
 	v.syncTabs()
 	return v
@@ -142,6 +156,9 @@ func (v *workspaceView) closeTab(tab *container.TabItem) {
 			continue
 		}
 		editor.closed = true
+		if editor.viewer.cancelPrepare != nil {
+			editor.viewer.cancelPrepare()
+		}
 		if editor.cancelRun != nil {
 			editor.cancelRun()
 		}

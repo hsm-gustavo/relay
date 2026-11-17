@@ -11,8 +11,14 @@ import (
 // Raw mode, non-JSON bodies, and incomplete JSON in the request preview remain plain text.
 func colorJSON(grid *widget.TextGrid, text string, enabled bool) {
 	text, clipped := boundedPreview(text)
+	paintJSON(grid, text, !clipped && enabled && json.Valid([]byte(text)))
+}
+
+// paintJSON styles an already-bounded text window. Unlike request preview
+// formatting, this never wraps or rewrites characters in the response.
+func paintJSON(grid *widget.TextGrid, text string, enabled bool) {
 	grid.SetText(text)
-	if clipped || !enabled || !json.Valid([]byte(text)) {
+	if !enabled {
 		return
 	}
 	// Scan the rendered cells so tabs and wide Unicode characters cannot misalign styles.
