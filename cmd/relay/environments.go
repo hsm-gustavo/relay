@@ -74,7 +74,7 @@ func (v *workspaceView) environmentBar() fyne.CanvasObject {
 	})
 	v.environments.PlaceHolder = "Select environment"
 	v.refreshEnvironments()
-	return container.NewHBox(widget.NewLabel("Environment"), v.environments, widget.NewButton("New environment", func() { v.editEnvironment(nil) }), edit, remove)
+	return container.NewHBox(widget.NewLabel("Environment"), v.environments, widget.NewButton("New environment", func() { v.editEnvironment(nil) }), edit, remove, widget.NewButton("Import cURL", v.showCurlImport))
 }
 
 func (v *workspaceView) editEnvironment(env *workspace.Environment) {

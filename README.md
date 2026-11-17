@@ -78,3 +78,22 @@ Enter one `name=value` per line. Names are case-sensitive, start with an ASCII l
 Substitution happens once when sending and never overwrites the saved template. Values are literal, are not recursively expanded, and are not automatically JSON-escaped: values placed inside JSON strings must already be valid JSON string contents. Undefined variables or malformed references produce an error before a network request is sent. **No environment** works for requests without variables.
 
 History retains the template, environment name, and resolved request values used for that execution. The response identifies the environment it was sent with, even if you switch environments while waiting. Reopening history uses its template with the currently selected environment on the next send. Variable values, including any credentials, are stored in the existing private, unencrypted local workspace.
+
+## Import cURL
+
+Click **Import cURL** in the top bar, paste a single command, and review the method, URL, auth, timeout, and compatibility notes before clicking **Import**. Relay opens a new editable tab and saves its draft; importing does not send the request. Use **Save request** to add it to a collection.
+
+```sh
+curl '{{base_url}}/users' \
+  --request POST \
+  --header 'Content-Type: application/json' \
+  --header 'Authorization: Bearer {{token}}' \
+  --data-raw '{"name":"Ada"}' \
+  --max-time 20
+```
+
+Supported input uses POSIX-style single/double quotes and backslash line continuations. Supported options include standard HTTP methods (`-X`/`--request`), positional URLs or `--url`, HEAD (`-I`/`--head`), inline JSON (`-d`/`--data`, `--data-raw`, `--data-binary`, `--json`), Basic Auth (`-u`/`--user` or an Authorization header), Bearer Auth (an Authorization header or `--oauth2-bearer`), and total timeout seconds (`-m`/`--max-time`). `--get`/`-G` with inline data or `--data-urlencode name=value` appends query parameters to the URL, preserving repeated names. Relay `{{variables}}` remain intact. Output-only flags `-s`, `-S`, and `-i`, and redirect flag `-L`, are accepted, including `-sSL`.
+
+Only JSON Content-Type and Basic/Bearer Authorization headers can be represented. Other explicit headers are listed as omitted in the review pane. `--json` also requests an Accept header in cURL; that omission is reported. A JSON body supplied without a Content-Type gets a note explaining that Relay sends it as `application/json` instead of cURL’s default form Content-Type. Relay follows redirects and defaults to a 30-second timeout; the preview calls out these defaults.
+
+Files/stdin, multipart/form bodies, cookies, multiple URLs, unsupported methods/options, shell expansions, command substitution, pipelines, and other shell operators are rejected. Commands are parsed as text and never executed. Windows cmd/PowerShell quoting and ANSI-C `$'…'` quoting are not supported. Import size is limited to 256 KiB. Imported credentials are persisted under Relay’s existing local storage rules.
