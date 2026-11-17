@@ -39,7 +39,7 @@ func Parse(command string) (Result, error) {
 	method := ""
 	head, get, hasBody, jsonBody, endOptions := false, false, false, false, false
 	encodedData := false
-	body, contentType := "", ""
+	contentType := ""
 	var data []string
 	var headers []string
 	setURL := func(value string) error {
@@ -72,12 +72,12 @@ func Parse(command string) (Result, error) {
 			if name, v, ok := strings.Cut(arg, "="); ok {
 				option, value, attached = name, v, true
 			}
-		} else if len(arg) > 2 && strings.ContainsRune("XHdum", rune(arg[1])) {
+		} else if len(arg) > 2 && strings.ContainsRune("XHdumF", rune(arg[1])) {
 			option, value, attached = arg[:2], arg[2:], true
 		}
 		needsValue := false
 		switch option {
-		case "-X", "--request", "--url", "-H", "--header", "-u", "--user", "--oauth2-bearer", "-m", "--max-time", "-d", "--data", "--data-raw", "--data-binary", "--data-urlencode", "--json":
+		case "-F", "--form", "--form-string", "-X", "--request", "--url", "-H", "--header", "-u", "--user", "--oauth2-bearer", "-m", "--max-time", "-d", "--data", "--data-raw", "--data-binary", "--data-urlencode", "--json":
 			needsValue = true
 		}
 		if needsValue && !attached {
@@ -129,7 +129,21 @@ func Parse(command string) (Result, error) {
 				return Result{}, fmt.Errorf("max-time must be nonnegative seconds")
 			}
 			r.Timeout = duration.String()
+		case "-F", "--form", "--form-string":
+			if hasBody && len(data) > 0 {
+				return Result{}, fmt.Errorf("cannot mix multipart fields and data options")
+			}
+			field, err := parseMultipartField(value, option == "--form-string")
+			if err != nil {
+				return Result{}, err
+			}
+			r.FormFields = append(r.FormFields, field)
+			r.BodyType = httpclient.BodyMultipart
+			hasBody = true
 		case "-d", "--data", "--data-raw", "--data-binary", "--json", "--data-urlencode":
+			if r.BodyType == httpclient.BodyMultipart {
+				return Result{}, fmt.Errorf("cannot mix multipart fields and data options")
+			}
 			if option != "--data-raw" && strings.HasPrefix(value, "@") {
 				return Result{}, fmt.Errorf("file and stdin bodies are not supported; paste inline JSON instead")
 			}
@@ -143,7 +157,6 @@ func Parse(command string) (Result, error) {
 			}
 
 			hasBody = true
-			body = value
 			data = append(data, value)
 			if option == "--json" {
 				jsonBody = true
@@ -168,12 +181,7 @@ func Parse(command string) (Result, error) {
 	if strings.TrimSpace(r.URL) == "" {
 		return Result{}, fmt.Errorf("the cURL command needs a URL")
 	}
-	if len(data) > 1 && !get {
-		return Result{}, fmt.Errorf("multiple body options are supported only with --get")
-	}
-	if encodedData && !get {
-		return Result{}, fmt.Errorf("--data-urlencode requires --get; Relay cannot send form bodies")
-	}
+
 	if jsonBody && get {
 		return Result{}, fmt.Errorf("combining --json and --get is not supported")
 	}
@@ -185,7 +193,12 @@ func Parse(command string) (Result, error) {
 	}
 	if hasBody && !get {
 		r.Method = http.MethodPost
-		r.Body = body
+		if r.BodyType != httpclient.BodyMultipart {
+			r.Body = strings.Join(data, "&")
+		}
+	}
+	if r.BodyType == httpclient.BodyMultipart && get {
+		return Result{}, fmt.Errorf("multipart fields cannot be combined with --get")
 	}
 	if method != "" {
 		r.Method = method
@@ -260,22 +273,52 @@ func Parse(command string) (Result, error) {
 			result.Warnings = append(result.Warnings, fmt.Sprintf("Header %q is not imported; Relay has no custom request-header editor.", strings.TrimSpace(name)))
 		}
 	}
-	if r.Body != "" || (hasBody && !get) {
-		if !json.Valid([]byte(r.Body)) && !strings.Contains(r.Body, "{{") {
-			return Result{}, fmt.Errorf("Relay supports inline JSON bodies only; form data and other body formats cannot be imported")
+	if r.BodyType == httpclient.BodyMultipart {
+		for _, field := range r.FormFields {
+			if field.Type == "file" {
+				result.Warnings = append(result.Warnings, "Multipart file paths are imported without reading files. Review them in Body before sending.")
+				break
+			}
 		}
-		if contentType != "" && !strings.EqualFold(contentType, "application/json") {
-			return Result{}, fmt.Errorf("Relay supports Content-Type: application/json only")
+		if contentType != "" && !strings.EqualFold(contentType, httpclient.BodyMultipart) {
+			return Result{}, fmt.Errorf("multipart Content-Type must omit any custom boundary; Relay generates it")
 		}
-		if contentType == "" && !jsonBody {
-			result.Warnings = append(result.Warnings, "cURL defaults --data to form Content-Type; Relay will send this JSON body as application/json.")
+	} else if hasBody && !get {
+		if jsonBody || strings.EqualFold(contentType, httpclient.BodyJSON) || (contentType == "" && !encodedData && (json.Valid([]byte(r.Body)) || (strings.Contains(r.Body, "{{") && strings.HasPrefix(strings.TrimSpace(r.Body), "{")))) {
+			if len(data) > 1 {
+				return Result{}, fmt.Errorf("multiple JSON body options are not supported")
+			}
+			if contentType != "" && !strings.EqualFold(contentType, httpclient.BodyJSON) {
+				return Result{}, fmt.Errorf("conflicting JSON Content-Type")
+			}
+			r.BodyType = httpclient.BodyJSON
+			if !json.Valid([]byte(r.Body)) && !strings.Contains(r.Body, "{{") {
+				return Result{}, fmt.Errorf("invalid JSON body")
+			}
+			if contentType == "" && !jsonBody {
+				result.Warnings = append(result.Warnings, "cURL defaults --data to form Content-Type; Relay will send this JSON body as application/json.")
+			}
+		} else {
+			if contentType != "" && !strings.EqualFold(contentType, httpclient.BodyURLEncoded) {
+				return Result{}, fmt.Errorf("supported body Content-Types are JSON, URL-encoded, and multipart")
+			}
+			fields, err := parseURLEncoded(r.Body)
+			if err != nil {
+				return Result{}, err
+			}
+			r.BodyType = httpclient.BodyURLEncoded
+			r.FormFields = fields
+			r.Body = ""
 		}
 	} else if contentType != "" {
-		return Result{}, fmt.Errorf("Relay cannot set Content-Type without a JSON body")
+		return Result{}, fmt.Errorf("Relay cannot set Content-Type without a body")
 	}
+
 	if !strings.Contains(r.URL+r.Params+r.Body+r.Auth.Username+r.Auth.Password+r.Auth.Token, "{{") {
-		if _, err := r.Build(context.Background()); err != nil {
+		if request, err := r.Build(context.Background()); err != nil {
 			return Result{}, err
+		} else if request.Body != nil {
+			_ = request.Body.Close()
 		}
 	}
 	return result, nil

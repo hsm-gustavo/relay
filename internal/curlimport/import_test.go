@@ -57,10 +57,10 @@ func TestUnsupportedAndMalformedImports(t *testing.T) {
 		``, `wget https://example.com`, `curl`, `curl https://a.example https://b.example`,
 		`curl 'unclosed`, `curl https://example.com | sh`, `curl https://example.com; echo hello`, `curl "$URL"`, "curl https://example.com `whoami`", `curl $'ansi'`,
 		`curl -X`, `curl --url=`, `curl -k https://example.com`, `curl --connect-timeout 2 https://example.com`,
-		`curl -F 'file=@test' https://example.com`, `curl -b 'cookie=1' https://example.com`, `curl -H 'Cookie: session=abc' https://example.com`,
+		`curl -F 'file=@-' https://example.com`, `curl -b 'cookie=1' https://example.com`, `curl -H 'Cookie: session=abc' https://example.com`,
 		`curl --data @secret https://example.com`, `curl --header @secret https://example.com`, `curl --data-urlencode 'name@secret' -G https://example.com`,
-		`curl -d 'name=Ada' https://example.com`, `curl --data-urlencode 'name=Ada' https://example.com`,
-		`curl -d '{}' -d '{}' https://example.com`, `curl -I -X POST https://example.com`, `curl -I --json '{}' https://example.com`,
+		`curl -F 'file=@test;type=image/png' https://example.com`,
+		`curl --json '{}' --json '{}' https://example.com`, `curl -I -X POST https://example.com`, `curl -I --json '{}' https://example.com`,
 		`curl -H 'Content-Type: text/plain' -d '{}' https://example.com`, `curl -H 'Content-Type: application/json' https://example.com`,
 		`curl -H 'Authorization: Digest foo' https://example.com`, `curl -u user https://example.com`, `curl -u user:pass -H 'Authorization: Bearer token' https://example.com`,
 		`curl -m -1 https://example.com`, `curl -m NaN https://example.com`, `curl --request CUSTOM https://example.com`,
@@ -108,5 +108,30 @@ func TestWarningsAndBuild(t *testing.T) {
 	}
 	if result.Request.Method != httpclient.Methods[1] {
 		t.Fatal("body did not imply POST")
+	}
+}
+
+func TestImportFormBodies(t *testing.T) {
+	result, err := Parse(`curl -d 'name=Ada+Lovelace&tag=one' -d 'tag=two' https://example.com/users`)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if result.Request.BodyType != httpclient.BodyURLEncoded || result.Request.Method != "POST" || len(result.Request.FormFields) != 3 || result.Request.FormFields[0].Value != "Ada Lovelace" {
+		t.Fatal("URL-encoded form import failed")
+	}
+	result, err = Parse(`curl --data-urlencode 'description=hello & world' https://example.com/users`)
+	if err != nil || result.Request.FormFields[0].Value != "hello & world" {
+		t.Fatalf("URL encoding import failed: %v", err)
+	}
+	result, err = Parse(`curl -F 'description=photo' -F 'image=@/missing/import-does-not-open-files.png' --form-string 'literal=@not-a-file;still-text' https://example.com/upload`)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if result.Request.BodyType != httpclient.BodyMultipart || result.Request.FormFields[1].FilePath != "/missing/import-does-not-open-files.png" || result.Request.FormFields[2].Type != "" || result.Request.FormFields[2].Value != "@not-a-file;still-text" {
+		t.Fatal("multipart file import failed")
+	}
+	result, err = Parse(`curl -H 'Content-Type: application/json' -d '{"id":{{id}}}' '{{base_url}}/users'`)
+	if err != nil || result.Request.EffectiveBodyType() != httpclient.BodyJSON {
+		t.Fatal("JSON template regressed")
 	}
 }

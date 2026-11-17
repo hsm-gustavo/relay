@@ -18,7 +18,7 @@ tag=go
 tag=fyne
 ```
 
-In **JSON body**, optionally enter valid JSON. Relay sends it with `Content-Type: application/json`. An empty editor sends no body.
+In **Body**, choose JSON, URL-encoded, or multipart Content-Type. JSON remains the default and preserves existing requests; an empty JSON editor sends no body.
 
 The response panel shows the HTTP status, total transfer time, and received body size in bytes (after automatic decompression, excluding headers). View response headers in the **Headers** tab. Switch between **Formatted JSON** and **Raw text**; non-JSON responses display as text in either mode. Copy buttons copy the displayed body or headers. HTTP error responses remain inspectable; validation and network errors appear above the editors.
 
@@ -53,7 +53,7 @@ In **Settings**, enter a timeout such as `30s`, `500ms`, or `2m`. A blank value 
 
 HTTP methods use distinct colors in the editor and sidebar: GET is green, POST amber, PUT blue, PATCH purple, DELETE red, and HEAD/OPTIONS cyan. Response statuses use green for success, cyan for redirects, amber for client errors, and red for server/network errors. Status codes and method names remain visible alongside the colors.
 
-Formatted JSON responses highlight object keys, strings, numbers, booleans, and null values. The JSON body editor has **Edit** and **Highlighted preview** tabs. Raw responses, non-JSON bodies, and incomplete JSON previews remain plain text. Header names are highlighted separately from values. The colors adapt to light and dark themes without changing response text or copied contents.
+Formatted JSON responses highlight object keys, strings, numbers, booleans, and null values. The JSON editor has **Edit** and **Highlighted preview** tabs. Raw responses, non-JSON bodies, and incomplete JSON previews remain plain text. Header names are highlighted separately from values. The colors adapt to light and dark themes without changing response text or copied contents.
 
 ## Large responses and failed transfers
 
@@ -92,11 +92,11 @@ curl '{{base_url}}/users' \
   --max-time 20
 ```
 
-Supported input uses POSIX-style single/double quotes and backslash line continuations. Supported options include standard HTTP methods (`-X`/`--request`), positional URLs or `--url`, HEAD (`-I`/`--head`), inline JSON (`-d`/`--data`, `--data-raw`, `--data-binary`, `--json`), Basic Auth (`-u`/`--user` or an Authorization header), Bearer Auth (an Authorization header or `--oauth2-bearer`), and total timeout seconds (`-m`/`--max-time`). `--get`/`-G` with inline data or `--data-urlencode name=value` appends query parameters to the URL, preserving repeated names. Relay `{{variables}}` remain intact. Output-only flags `-s`, `-S`, and `-i`, and redirect flag `-L`, are accepted, including `-sSL`.
+Supported input uses POSIX-style single/double quotes and backslash line continuations. Supported options include standard HTTP methods (`-X`/`--request`), positional URLs or `--url`, HEAD (`-I`/`--head`), inline JSON (`-d`/`--data`, `--data-raw`, `--data-binary`, `--json`), URL-encoded forms (`--data`/`--data-urlencode`), multipart fields (`-F`/`--form` and `--form-string`), Basic Auth (`-u`/`--user` or an Authorization header), Bearer Auth (an Authorization header or `--oauth2-bearer`), and total timeout seconds (`-m`/`--max-time`). `--get`/`-G` with inline data or `--data-urlencode name=value` appends query parameters to the URL, preserving repeated names. Relay `{{variables}}` remain intact. Output-only flags `-s`, `-S`, and `-i`, and redirect flag `-L`, are accepted, including `-sSL`.
 
-Only JSON Content-Type and Basic/Bearer Authorization headers can be represented. Other explicit headers are listed as omitted in the review pane. `--json` also requests an Accept header in cURL; that omission is reported. A JSON body supplied without a Content-Type gets a note explaining that Relay sends it as `application/json` instead of cURL’s default form Content-Type. Relay follows redirects and defaults to a 30-second timeout; the preview calls out these defaults.
+JSON, URL-encoded, and generated multipart Content-Type plus Basic/Bearer Authorization headers can be represented. Other explicit headers are listed as omitted in the review pane. `--json` also requests an Accept header in cURL; that omission is reported. A JSON body supplied without a Content-Type gets a note explaining that Relay sends it as `application/json` instead of cURL’s default form Content-Type. Relay follows redirects and defaults to a 30-second timeout; the preview calls out these defaults.
 
-Files/stdin, multipart/form bodies, cookies, multiple URLs, unsupported methods/options, shell expansions, command substitution, pipelines, and other shell operators are rejected. Commands are parsed as text and never executed. Windows cmd/PowerShell quoting and ANSI-C `$'…'` quoting are not supported. Import size is limited to 256 KiB. Imported credentials are persisted under Relay’s existing local storage rules.
+File/stdin JSON bodies, cookies, multiple URLs, unsupported methods/options, shell expansions, command substitution, pipelines, and other shell operators are rejected. Multipart `name=@path` references are supported without reading the file during import; stdin, file lists, `name=<file`, and per-part type/filename modifiers remain unsupported. Use separate file fields for multiple uploads. Commands are parsed as text and never executed. Windows cmd/PowerShell quoting and ANSI-C `$'…'` quoting are not supported. Import size is limited to 256 KiB. Imported credentials are persisted under Relay’s existing local storage rules.
 
 ## Response variable extraction
 
@@ -111,3 +111,22 @@ Strings are extracted unchanged (including empty strings); numbers retain their 
 Session values have precedence over manual environment values, which remain unchanged on disk. **Clear session** clears overrides for the selected environment; restarting clears all overrides. Switching environments preserves each environment’s isolated session values. Renaming an environment preserves its overrides; deleting it clears them, and a pending response cannot recreate a deleted environment’s values. Rules targeting the same variable apply in order, with the last successful rule winning. Concurrent requests update session variables in response-completion order on Fyne’s UI queue; the last applied successful extraction wins.
 
 For privacy, responses for requests with enabled extraction rules are session-only. Requests that actually reference extracted session variables also keep their responses, resolved history requests, and error details off disk. These remain visible while Relay is open; after restarting, templates/rules/history metadata remain, but session-only responses must be fetched again. Extraction result values are never serialized. Existing manual variables, literal credentials, and unrelated responses retain their previous persistence behavior. Copying an extracted value into a literal request field explicitly makes it normal saved request data.
+
+## URL-encoded forms and file uploads
+
+In **Body**, select **application/x-www-form-urlencoded** or **multipart/form-data** and click **Add field**. Set each name and text value; repeated names and empty values are supported. Fields can be disabled or removed. URL-encoded values are escaped automatically, including spaces, Unicode, newlines, and `&`/`=` characters.
+
+For uploads, choose **multipart/form-data**, set a row’s type to **file**, and click **Choose file…**. Linux prefers the operating system’s XDG Desktop Portal file chooser when available; Fyne’s file browser is the fallback and is used on other desktop platforms. You can also enter a local path directly. Add multiple file rows to upload several files, including multiple files under the same field name. File fields require multipart mode; disabled file fields are ignored.
+
+Names, text values, and file paths support `{{variables}}`, including extracted session variables. Inactive JSON/form values and disabled rows are not interpolated. Body types, fields, disabled states, and file paths survive restarts in drafts, collections, and history. File contents are not copied into the workspace; each send reads the current file at that path. Missing, unreadable, or non-regular files produce an upload error.
+
+Relay generates the multipart boundary, filename, and file Content-Type (extension first, content sniffing as a fallback). Files stream from disk with bounded memory; Cancel and the request timeout also cover uploads. Multipart requests can be replayed on 307/308 redirects and stream without a precomputed total length (chunked on HTTP/1.1). APIs requiring a fixed multipart Content-Length are not supported yet. Custom per-file names and MIME overrides are not implemented.
+
+cURL examples:
+
+```sh
+curl --data-urlencode 'name=Ada & Grace' --data 'tag=one&tag=two' https://example.com/users
+curl -F 'description=Profile photo' -F 'image=@/path/to/photo.png' https://example.com/upload
+```
+
+Importing these commands creates editable form fields, never reads file contents, and never sends the request. JSON imports and saved JSON requests continue to work.

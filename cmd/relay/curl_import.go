@@ -10,6 +10,7 @@ import (
 	"fyne.io/fyne/v2/widget"
 
 	"github.com/hsm-gustavo/relay/internal/curlimport"
+	"github.com/hsm-gustavo/relay/internal/httpclient"
 	"github.com/hsm-gustavo/relay/internal/workspace"
 )
 
@@ -49,7 +50,11 @@ func (v *workspaceView) showCurlImport() {
 		if timeout == "" {
 			timeout = "30s (Relay default)"
 		}
-		summary := fmt.Sprintf("%s %s\nBody: %d bytes · Auth: %s · Timeout: %s\n\nReview before importing:\n", result.Request.Method, result.Request.URL, len(result.Request.Body), auth, timeout)
+		body := fmt.Sprintf("%s, %d bytes", result.Request.EffectiveBodyType(), len(result.Request.Body))
+		if result.Request.EffectiveBodyType() != httpclient.BodyJSON {
+			body = fmt.Sprintf("%s, %d fields", result.Request.EffectiveBodyType(), len(result.Request.FormFields))
+		}
+		summary := fmt.Sprintf("%s %s\nBody: %s · Auth: %s · Timeout: %s\n\nReview before importing:\n", result.Request.Method, result.Request.URL, body, auth, timeout)
 		for i, warning := range result.Warnings {
 			if i >= 12 {
 				summary += "Additional unsupported headers were omitted.\n"
