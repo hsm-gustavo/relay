@@ -183,6 +183,7 @@ func (v *workspaceView) makeLibrary() fyne.CanvasObject {
 	}, func(i widget.ListItemID, object fyne.CanvasObject) {
 		item := v.store.State.History[i]
 		result := ""
+
 		if item.Pending {
 			result = " · Sending…"
 		}
@@ -192,12 +193,15 @@ func (v *workspaceView) makeLibrary() fyne.CanvasObject {
 		if item.Error != "" {
 			result = " · Failed"
 		}
+		if item.EnvironmentName != "" {
+			result += " · " + item.EnvironmentName
+		}
 		object.(*requestRow).set(item.Request.Method, item.Name+"\n"+item.SentAt.Local().Format("Jan 02 15:04:05")+result)
 	})
 	v.historyList.OnSelected = func(i widget.ListItemID) {
 		item := v.store.State.History[i]
 		v.selectedHistory = item.ID
-		draft := workspace.Draft{Item: item.Item, Response: item.Response, Error: item.Error, Raw: v.active.draft.Raw}
+		draft := workspace.Draft{EnvironmentName: item.EnvironmentName, Item: item.Item, Response: item.Response, Error: item.Error, Raw: v.active.draft.Raw}
 		draft.ID = "" // Saving history creates a collection request rather than modifying another saved item.
 		v.openDraft(draft)
 		v.persist()

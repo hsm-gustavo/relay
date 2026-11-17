@@ -17,17 +17,17 @@ import (
 
 type requestEditor struct {
 	*workspaceView
-	draft                                                         workspace.Draft
-	tab                                                           *container.TabItem
-	name, url, params, body, username, password, token, timeout   *widget.Entry
-	method, format, auth                                          *widget.Select
-	status, duration, size, requestError, previewNote, headerNote *widget.Label
-	responseBody, responseHeaders, bodyPreview                    *widget.TextGrid
-	methodColors, statusColors                                    *textTheme
-	send, cancel, copyBody                                        *widget.Button
-	loading, closed                                               bool
-	revision                                                      uint64
-	cancelRun                                                     context.CancelFunc
+	draft                                                                          workspace.Draft
+	tab                                                                            *container.TabItem
+	name, url, params, body, username, password, token, timeout                    *widget.Entry
+	method, format, auth                                                           *widget.Select
+	status, duration, size, requestError, previewNote, headerNote, environmentInfo *widget.Label
+	responseBody, responseHeaders, bodyPreview                                     *widget.TextGrid
+	methodColors, statusColors                                                     *textTheme
+	send, cancel, copyBody                                                         *widget.Button
+	loading, closed                                                                bool
+	revision                                                                       uint64
+	cancelRun                                                                      context.CancelFunc
 }
 
 func (v *requestEditor) capture() {
@@ -108,6 +108,15 @@ func (v *requestEditor) showResult() {
 	} else {
 		v.requestError.Show()
 	}
+	v.environmentInfo.Hide()
+	if d.Response != nil || d.Error != "" {
+		name := d.EnvironmentName
+		if name == "" {
+			name = "No environment"
+		}
+		v.environmentInfo.SetText("Sent with: " + name)
+		v.environmentInfo.Show()
+	}
 	v.copyBody.Disable()
 	if d.Error != "" {
 		v.statusColors.role = red
@@ -176,6 +185,8 @@ func (v *requestEditor) makeEditor() fyne.CanvasObject {
 		container.NewTabItem("Authentication", v.authSettings()),
 		container.NewTabItem("Settings", v.timeoutSettings()),
 	)
+	v.environmentInfo = widget.NewLabel("")
+	v.environmentInfo.Hide()
 	v.status = widget.NewLabel("")
 	v.statusColors = &textTheme{Theme: theme.DefaultTheme()}
 	v.duration = widget.NewLabel("")
@@ -231,7 +242,7 @@ func (v *requestEditor) makeEditor() fyne.CanvasObject {
 	nameBar := container.NewBorder(nil, nil, nil, container.NewHBox(
 		widget.NewButton("New tab", v.newRequest), widget.NewButton("Save request", v.saveRequest)), v.name)
 	requestBar := container.NewBorder(nil, nil, container.NewThemeOverride(v.method, v.methodColors), container.NewHBox(v.send, v.cancel), v.url)
-	panels := container.NewVSplit(requestTabs, container.NewBorder(container.NewHBox(container.NewThemeOverride(v.status, v.statusColors), v.duration, v.size), nil, nil, nil, responseTabs))
+	panels := container.NewVSplit(requestTabs, container.NewBorder(container.NewVBox(container.NewHBox(container.NewThemeOverride(v.status, v.statusColors), v.duration, v.size), v.environmentInfo), nil, nil, nil, responseTabs))
 	panels.Offset = 0.4
 	return container.NewBorder(container.NewVBox(nameBar, requestBar, v.requestError), nil, nil, nil, panels)
 }
@@ -242,7 +253,18 @@ func (v *requestEditor) execute() {
 	}
 	v.capture()
 	snapshot := v.draft.Item
-	timeout, err := snapshot.Request.TimeoutDuration()
+	var variables map[string]string
+	environmentName := "No environment"
+	if env := v.store.State.ActiveEnvironment(); env != nil {
+		variables = env.Variables
+		environmentName = env.Name
+	}
+	resolved, err := snapshot.Request.Resolve(variables)
+	if err != nil {
+		v.failValidation(err)
+		return
+	}
+	timeout, err := resolved.TimeoutDuration()
 	if err != nil {
 		v.failValidation(err)
 		return
@@ -254,7 +276,7 @@ func (v *requestEditor) execute() {
 	} else {
 		ctx, cancel = context.WithCancel(context.Background())
 	}
-	req, err := snapshot.Request.Build(ctx)
+	req, err := resolved.Build(ctx)
 	if err != nil {
 		cancel()
 		v.failValidation(err)
@@ -263,6 +285,8 @@ func (v *requestEditor) execute() {
 	v.selectedHistory = ""
 	v.historyList.UnselectAll()
 	id := v.store.State.AddHistory(snapshot)
+	v.store.State.History[0].EnvironmentName = environmentName
+	v.store.State.History[0].ResolvedRequest = &resolved
 	v.historyList.Refresh()
 	if !v.persist() {
 		cancel()
@@ -273,6 +297,7 @@ func (v *requestEditor) execute() {
 	revision := v.revision
 	v.cancelRun = cancel
 	v.draft.Response, v.draft.Error = nil, ""
+	v.draft.EnvironmentName = environmentName
 	v.showResult()
 	v.updateTitle()
 	v.send.Disable()
@@ -292,6 +317,7 @@ func (v *requestEditor) execute() {
 				v.cancel.Disable()
 				if revision == v.revision {
 					v.draft.Response, v.draft.Error = result, message
+					v.draft.EnvironmentName = environmentName
 				}
 				v.showResult()
 				v.updateTitle()
@@ -305,6 +331,7 @@ func (v *requestEditor) execute() {
 func (v *requestEditor) failValidation(err error) {
 	v.draft.Response = nil
 	v.draft.Error = err.Error()
+	v.draft.EnvironmentName = ""
 	v.showResult()
 	v.persist()
 }

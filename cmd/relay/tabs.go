@@ -18,7 +18,7 @@ type workspaceView struct {
 	client                                               *http.Client
 	store                                                *workspace.Store
 	content                                              fyne.CanvasObject
-	collections                                          *widget.Select
+	collections, environments                            *widget.Select
 	storageError                                         *widget.Label
 	savedList, historyList                               *widget.List
 	selectedCollection, selectedRequest, selectedHistory string
@@ -69,7 +69,7 @@ func newWorkspaceView(w fyne.Window, client *http.Client, store *workspace.Store
 	}
 	split := container.NewHSplit(sidebar, v.tabs)
 	split.Offset = 0.25
-	v.content = container.NewBorder(v.storageError, nil, nil, nil, split)
+	v.content = container.NewBorder(container.NewVBox(v.environmentBar(), v.storageError), nil, nil, nil, split)
 	v.loading = false
 	v.syncTabs()
 	return v

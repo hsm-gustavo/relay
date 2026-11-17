@@ -62,3 +62,19 @@ The response view uses a bounded preview (up to 4,096 characters, 120 columns pe
 Responses retain up to 16 MiB of decompressed body data. Transfers exceeding that limit stop with an explicit incomplete-response message. If a read fails, times out, or is cancelled after headers arrive, the received status, headers, and partial body remain available alongside the error. Body size then describes the retained bytes, not the complete server response.
 
 Response bodies are stored once in private, deduplicated files under `relay/bodies/`; the workspace JSON contains references. Draft edits rewrite metadata rather than entire response bodies. Unreferenced body files are removed after a successful save. Existing workspaces migrate automatically to version 2, and missing or damaged body files produce an error without overwriting the workspace. When backing up or moving data, keep `workspace.json` and its `bodies` directory together.
+
+## Environments and variables
+
+Use **New environment** in the top bar to create **Local** with:
+
+```text
+base_url=http://localhost:8080
+```
+
+Create **Production** with `base_url=https://api.example.com`, then save a request with the URL `{{base_url}}/users`. Choose an environment in the top bar and click **Send** to use that target. **Edit environment** changes its name or variables; **Delete environment** removes it and selects **No environment** if necessary. The active environment applies to all tabs, and environments and selection survive restarts.
+
+Enter one `name=value` per line. Names are case-sensitive, start with an ASCII letter or underscore, and may contain digits, dots, and hyphens. Empty values are allowed; duplicate names are rejected. Use `{{name}}` in URLs, query parameters, JSON bodies, active authentication fields, and timeout settings. For example, use `{{token}}` as a Bearer token or `{"id":{{user_id}}}` for a JSON number. Query-editor values are URL-encoded after substitution.
+
+Substitution happens once when sending and never overwrites the saved template. Values are literal, are not recursively expanded, and are not automatically JSON-escaped: values placed inside JSON strings must already be valid JSON string contents. Undefined variables or malformed references produce an error before a network request is sent. **No environment** works for requests without variables.
+
+History retains the template, environment name, and resolved request values used for that execution. The response identifies the environment it was sent with, even if you switch environments while waiting. Reopening history uses its template with the currently selected environment on the next send. Variable values, including any credentials, are stored in the existing private, unencrypted local workspace.

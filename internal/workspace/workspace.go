@@ -27,6 +27,8 @@ type Collection struct {
 }
 
 type HistoryItem struct {
+	EnvironmentName string
+	ResolvedRequest *httpclient.Request
 	Item
 	SentAt   time.Time
 	Pending  bool
@@ -35,8 +37,9 @@ type HistoryItem struct {
 }
 
 type Draft struct {
-	TabID string
-	Raw   bool
+	EnvironmentName string
+	TabID           string
+	Raw             bool
 	Item
 	CollectionID string
 	Response     *httpclient.Response
@@ -44,6 +47,8 @@ type Draft struct {
 }
 
 type State struct {
+	Environments         []Environment
+	ActiveEnvironmentID  string
 	Tabs                 []Draft
 	ActiveTabID          string
 	SelectedCollectionID string
