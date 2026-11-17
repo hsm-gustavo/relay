@@ -19,6 +19,9 @@ import (
 )
 
 type requestEditor struct {
+	bodyType                *widget.Select
+	formFields              []httpclient.FormField
+	formBox                 *fyne.Container
 	extractRules            []extraction.Rule
 	extractResults          []extraction.Result
 	rulesBox, extractionLog *fyne.Container
@@ -40,7 +43,7 @@ type requestEditor struct {
 func (v *requestEditor) capture() {
 	d := &v.draft
 	d.Name = v.name.Text
-	d.Request = httpclient.Request{Method: v.method.Selected, URL: v.url.Text, Params: v.params.Text, Body: v.body.Text, Auth: httpclient.Auth{Type: v.auth.Selected, Username: v.username.Text, Password: v.password.Text, Token: v.token.Text}, Timeout: v.timeout.Text, Extract: append([]extraction.Rule(nil), v.extractRules...)}
+	d.Request = httpclient.Request{Method: v.method.Selected, URL: v.url.Text, Params: v.params.Text, Body: v.body.Text, Auth: httpclient.Auth{Type: v.auth.Selected, Username: v.username.Text, Password: v.password.Text, Token: v.token.Text}, Timeout: v.timeout.Text, BodyType: v.bodyType.Selected, FormFields: append([]httpclient.FormField(nil), v.formFields...), Extract: append([]extraction.Rule(nil), v.extractRules...)}
 	d.Raw = v.format.Selected == "Raw text"
 }
 
@@ -64,6 +67,9 @@ func (v *requestEditor) loadDraft(d workspace.Draft) {
 	v.loading = true
 	v.revision++
 	v.draft = d
+	v.formFields = append([]httpclient.FormField(nil), d.Request.FormFields...)
+	v.bodyType.SetSelected(d.Request.EffectiveBodyType())
+	v.refreshFormFields()
 	v.extractRules = append([]extraction.Rule(nil), d.Request.Extract...)
 	v.refreshExtractionRules()
 	v.name.SetText(d.Name)
@@ -189,13 +195,9 @@ func (v *requestEditor) makeEditor() fyne.CanvasObject {
 	v.body.OnChanged = func(text string) { colorJSON(v.bodyPreview, text, true); v.changed(true) }
 	paramsHelp := widget.NewLabel("One key=value per line. Values are encoded automatically; duplicate keys are allowed.")
 	paramsHelp.Wrapping = fyne.TextWrapWord
-	bodyHelp := widget.NewLabel("Optional JSON body, sent with Content-Type: application/json.")
-	bodyHelp.Wrapping = fyne.TextWrapWord
 	requestTabs := container.NewAppTabs(
 		container.NewTabItem("Query params", container.NewBorder(paramsHelp, nil, nil, nil, v.params)),
-		container.NewTabItem("JSON body", container.NewBorder(bodyHelp, nil, nil, nil, container.NewAppTabs(
-			container.NewTabItem("Edit", v.body),
-			container.NewTabItem("Highlighted preview", v.bodyPreview)))),
+		container.NewTabItem("Body", v.bodyEditor()),
 		container.NewTabItem("Authentication", v.authSettings()),
 		container.NewTabItem("Settings", v.timeoutSettings()),
 		container.NewTabItem("Extract", v.extractionSettings()),
