@@ -10,8 +10,9 @@ import (
 // colorJSON changes cell styles only: displayed text and clipboard contents stay intact.
 // Raw mode, non-JSON bodies, and incomplete JSON in the request preview remain plain text.
 func colorJSON(grid *widget.TextGrid, text string, enabled bool) {
+	text, clipped := boundedPreview(text)
 	grid.SetText(text)
-	if !enabled || !json.Valid([]byte(text)) {
+	if clipped || !enabled || !json.Valid([]byte(text)) {
 		return
 	}
 	// Scan the rendered cells so tabs and wide Unicode characters cannot misalign styles.

@@ -54,3 +54,11 @@ In **Settings**, enter a timeout such as `30s`, `500ms`, or `2m`. A blank value 
 HTTP methods use distinct colors in the editor and sidebar: GET is green, POST amber, PUT blue, PATCH purple, DELETE red, and HEAD/OPTIONS cyan. Response statuses use green for success, cyan for redirects, amber for client errors, and red for server/network errors. Status codes and method names remain visible alongside the colors.
 
 Formatted JSON responses highlight object keys, strings, numbers, booleans, and null values. The JSON body editor has **Edit** and **Highlighted preview** tabs. Raw responses, non-JSON bodies, and incomplete JSON previews remain plain text. Header names are highlighted separately from values. The colors adapt to light and dark themes without changing response text or copied contents.
+
+## Large responses and failed transfers
+
+The response view uses a bounded preview (up to 4,096 characters, 120 columns per line, and 60 lines) so minified HTML and large JSON do not freeze the window. The preview explains when it is limited. Large or deeply nested JSON remains raw to avoid expensive formatting. **Copy response body** copies the full retained body, not just the preview. Header previews are bounded too, while **Copy headers** copies all headers.
+
+Responses retain up to 16 MiB of decompressed body data. Transfers exceeding that limit stop with an explicit incomplete-response message. If a read fails, times out, or is cancelled after headers arrive, the received status, headers, and partial body remain available alongside the error. Body size then describes the retained bytes, not the complete server response.
+
+Response bodies are stored once in private, deduplicated files under `relay/bodies/`; the workspace JSON contains references. Draft edits rewrite metadata rather than entire response bodies. Unreferenced body files are removed after a successful save. Existing workspaces migrate automatically to version 2, and missing or damaged body files produce an error without overwriting the workspace. When backing up or moving data, keep `workspace.json` and its `bodies` directory together.

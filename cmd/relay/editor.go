@@ -17,17 +17,17 @@ import (
 
 type requestEditor struct {
 	*workspaceView
-	draft                                                       workspace.Draft
-	tab                                                         *container.TabItem
-	name, url, params, body, username, password, token, timeout *widget.Entry
-	method, format, auth                                        *widget.Select
-	status, duration, size, requestError                        *widget.Label
-	responseBody, responseHeaders, bodyPreview                  *widget.TextGrid
-	methodColors, statusColors                                  *textTheme
-	send, cancel, copyBody                                      *widget.Button
-	loading, closed                                             bool
-	revision                                                    uint64
-	cancelRun                                                   context.CancelFunc
+	draft                                                         workspace.Draft
+	tab                                                           *container.TabItem
+	name, url, params, body, username, password, token, timeout   *widget.Entry
+	method, format, auth                                          *widget.Select
+	status, duration, size, requestError, previewNote, headerNote *widget.Label
+	responseBody, responseHeaders, bodyPreview                    *widget.TextGrid
+	methodColors, statusColors                                    *textTheme
+	send, cancel, copyBody                                        *widget.Button
+	loading, closed                                               bool
+	revision                                                      uint64
+	cancelRun                                                     context.CancelFunc
 }
 
 func (v *requestEditor) capture() {
@@ -97,6 +97,10 @@ func (v *requestEditor) showResult() {
 	v.duration.SetText("Time: —")
 	v.size.SetText("Body size: —")
 	v.responseBody.SetText("")
+	v.previewNote.SetText("")
+	v.previewNote.Hide()
+	v.headerNote.SetText("")
+	v.headerNote.Hide()
 	v.responseHeaders.SetText("")
 	v.requestError.SetText(d.Error)
 	if d.Error == "" {
@@ -118,9 +122,22 @@ func (v *requestEditor) showResult() {
 	v.status.SetText("Status: " + result.Status)
 	v.duration.SetText(fmt.Sprintf("Time: %.1f ms", float64(result.Duration)/float64(time.Millisecond)))
 	v.size.SetText(fmt.Sprintf("Body size: %d bytes", len(result.Body)))
-	text := httpclient.FormatBody(result.Body, !d.Raw)
-	colorJSON(v.responseBody, text, !d.Raw)
-	v.responseHeaders.SetText(httpclient.FormatHeaders(result.Headers))
+	text, note, highlight := responsePreview(result.Body, d.Raw)
+	colorJSON(v.responseBody, text, highlight)
+	if note != "" {
+		v.previewNote.SetText(note)
+		v.previewNote.Show()
+	}
+	if result.Incomplete {
+		v.statusColors.role = red
+		v.status.SetText("Status: " + result.Status + " (incomplete)")
+	}
+	headers, limited := boundedPreview(httpclient.FormatHeaders(result.Headers))
+	v.responseHeaders.SetText(headers)
+	if limited {
+		v.headerNote.SetText("Header preview limited. Copy headers copies all response headers.")
+		v.headerNote.Show()
+	}
 	colorHeaderKeys(v.responseHeaders)
 }
 
@@ -179,12 +196,24 @@ func (v *requestEditor) makeEditor() fyne.CanvasObject {
 		v.persist()
 	})
 	v.format.PlaceHolder = "Formatted JSON"
-	v.copyBody = widget.NewButton("Copy response body", func() { fyne.CurrentApp().Clipboard().SetContent(v.responseBody.Text()) })
+	v.copyBody = widget.NewButton("Copy response body", func() {
+		if result := v.draft.Response; result != nil {
+			fyne.CurrentApp().Clipboard().SetContent(httpclient.FormatBody(result.Body, !v.draft.Raw))
+		}
+	})
+	v.headerNote = widget.NewLabel("")
+	v.headerNote.Wrapping = fyne.TextWrapWord
+	v.headerNote.Hide()
+	v.previewNote = widget.NewLabel("")
+	v.previewNote.Wrapping = fyne.TextWrapWord
+	v.previewNote.Hide()
 	responseTabs := container.NewAppTabs(
-		container.NewTabItem("Response", container.NewBorder(container.NewHBox(v.format, v.copyBody), nil, nil, nil, v.responseBody)),
-		container.NewTabItem("Headers", container.NewBorder(widget.NewButton("Copy headers", func() {
-			fyne.CurrentApp().Clipboard().SetContent(v.responseHeaders.Text())
-		}), nil, nil, nil, v.responseHeaders)),
+		container.NewTabItem("Response", container.NewBorder(container.NewVBox(container.NewHBox(v.format, v.copyBody), v.previewNote), nil, nil, nil, v.responseBody)),
+		container.NewTabItem("Headers", container.NewBorder(container.NewVBox(widget.NewButton("Copy headers", func() {
+			if result := v.draft.Response; result != nil {
+				fyne.CurrentApp().Clipboard().SetContent(httpclient.FormatHeaders(result.Headers))
+			}
+		}), v.headerNote), nil, nil, nil, v.responseHeaders)),
 	)
 	v.send = widget.NewButton("Send", v.execute)
 	v.send.Importance = widget.HighImportance

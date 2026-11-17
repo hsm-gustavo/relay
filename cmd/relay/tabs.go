@@ -93,8 +93,13 @@ func (v *workspaceView) persist() bool {
 		v.storageError.Show()
 		return false
 	}
-	v.storageError.SetText("")
-	v.storageError.Hide()
+	if v.store.Warning != "" {
+		v.storageError.SetText(v.store.Warning)
+		v.storageError.Show()
+	} else {
+		v.storageError.SetText("")
+		v.storageError.Hide()
+	}
 	return true
 }
 
