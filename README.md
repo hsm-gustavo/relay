@@ -48,3 +48,9 @@ Each request tab has its own editor, response, and running request. You can send
 In **Settings**, enter a timeout such as `30s`, `500ms`, or `2m`. A blank value uses 30 seconds; `0` disables the timeout. The timeout covers connecting, redirects, and reading the response. Click **Cancel** beside Send to stop the current tab’s request. Cancellation and timeout results are recorded in history, with messages explaining common network, hostname, and TLS errors. HTTP error responses remain visible with their status and body.
 
 **Copy response body** copies the active response in the selected JSON/raw format and is enabled after a response arrives.
+
+## Text colors and JSON highlighting
+
+HTTP methods use distinct colors in the editor and sidebar: GET is green, POST amber, PUT blue, PATCH purple, DELETE red, and HEAD/OPTIONS cyan. Response statuses use green for success, cyan for redirects, amber for client errors, and red for server/network errors. Status codes and method names remain visible alongside the colors.
+
+Formatted JSON responses highlight object keys, strings, numbers, booleans, and null values. The JSON body editor has **Edit** and **Highlighted preview** tabs. Raw responses, non-JSON bodies, and incomplete JSON previews remain plain text. Header names are highlighted separately from values. The colors adapt to light and dark themes without changing response text or copied contents.

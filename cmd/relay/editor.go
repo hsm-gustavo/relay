@@ -8,6 +8,7 @@ import (
 
 	"fyne.io/fyne/v2"
 	"fyne.io/fyne/v2/container"
+	"fyne.io/fyne/v2/theme"
 	"fyne.io/fyne/v2/widget"
 
 	"github.com/hsm-gustavo/relay/internal/httpclient"
@@ -21,7 +22,8 @@ type requestEditor struct {
 	name, url, params, body, username, password, token, timeout *widget.Entry
 	method, format, auth                                        *widget.Select
 	status, duration, size, requestError                        *widget.Label
-	responseBody, responseHeaders                               *widget.TextGrid
+	responseBody, responseHeaders, bodyPreview                  *widget.TextGrid
+	methodColors, statusColors                                  *textTheme
 	send, cancel, copyBody                                      *widget.Button
 	loading, closed                                             bool
 	revision                                                    uint64
@@ -85,8 +87,11 @@ func (v *requestEditor) loadDraft(d workspace.Draft) {
 
 func (v *requestEditor) showResult() {
 	d := v.draft
+	v.statusColors.role = neutral
+	defer v.status.Refresh()
 	v.status.SetText("Status: —")
 	if v.cancelRun != nil {
+		v.statusColors.role = blue
 		v.status.SetText("Sending…")
 	}
 	v.duration.SetText("Time: —")
@@ -101,6 +106,7 @@ func (v *requestEditor) showResult() {
 	}
 	v.copyBody.Disable()
 	if d.Error != "" {
+		v.statusColors.role = red
 		v.status.SetText("Request failed")
 	}
 	if d.Response == nil {
@@ -108,11 +114,14 @@ func (v *requestEditor) showResult() {
 	}
 	v.copyBody.Enable()
 	result := d.Response
+	v.statusColors.role = statusRole(result.Status)
 	v.status.SetText("Status: " + result.Status)
 	v.duration.SetText(fmt.Sprintf("Time: %.1f ms", float64(result.Duration)/float64(time.Millisecond)))
 	v.size.SetText(fmt.Sprintf("Body size: %d bytes", len(result.Body)))
-	v.responseBody.SetText(httpclient.FormatBody(result.Body, !d.Raw))
+	text := httpclient.FormatBody(result.Body, !d.Raw)
+	colorJSON(v.responseBody, text, !d.Raw)
 	v.responseHeaders.SetText(httpclient.FormatHeaders(result.Headers))
+	colorHeaderKeys(v.responseHeaders)
 }
 
 func (v *requestEditor) makeEditor() fyne.CanvasObject {
@@ -120,27 +129,38 @@ func (v *requestEditor) makeEditor() fyne.CanvasObject {
 	v.name.SetPlaceHolder("Request name")
 	v.url = widget.NewEntry()
 	v.url.SetPlaceHolder("https://example.com/api or localhost:8080")
-	v.method = widget.NewSelect(httpclient.Methods, func(string) { v.changed(true) })
+	v.methodColors = &textTheme{Theme: theme.DefaultTheme()}
+	v.method = widget.NewSelect(httpclient.Methods, func(method string) {
+		v.methodColors.role = methodRole(method)
+		v.method.Refresh()
+		v.changed(true)
+	})
 	v.params = widget.NewMultiLineEntry()
 	v.params.SetPlaceHolder("search=hello world\ntag=go\ntag=fyne")
 	v.body = widget.NewMultiLineEntry()
 	v.body.TextStyle = fyne.TextStyle{Monospace: true}
+	v.bodyPreview = widget.NewTextGrid()
+	v.bodyPreview.Scroll = fyne.ScrollBoth
 	v.body.SetPlaceHolder("{\n  \"message\": \"Hello\"\n}")
 	v.name.OnChanged = func(string) { v.changed(false) }
 	for _, entry := range []*widget.Entry{v.url, v.params, v.body} {
 		entry.OnChanged = func(string) { v.changed(true) }
 	}
+	v.body.OnChanged = func(text string) { colorJSON(v.bodyPreview, text, true); v.changed(true) }
 	paramsHelp := widget.NewLabel("One key=value per line. Values are encoded automatically; duplicate keys are allowed.")
 	paramsHelp.Wrapping = fyne.TextWrapWord
 	bodyHelp := widget.NewLabel("Optional JSON body, sent with Content-Type: application/json.")
 	bodyHelp.Wrapping = fyne.TextWrapWord
 	requestTabs := container.NewAppTabs(
 		container.NewTabItem("Query params", container.NewBorder(paramsHelp, nil, nil, nil, v.params)),
-		container.NewTabItem("JSON body", container.NewBorder(bodyHelp, nil, nil, nil, v.body)),
+		container.NewTabItem("JSON body", container.NewBorder(bodyHelp, nil, nil, nil, container.NewAppTabs(
+			container.NewTabItem("Edit", v.body),
+			container.NewTabItem("Highlighted preview", v.bodyPreview)))),
 		container.NewTabItem("Authentication", v.authSettings()),
 		container.NewTabItem("Settings", v.timeoutSettings()),
 	)
 	v.status = widget.NewLabel("")
+	v.statusColors = &textTheme{Theme: theme.DefaultTheme()}
 	v.duration = widget.NewLabel("")
 	v.size = widget.NewLabel("")
 	v.requestError = widget.NewLabel("")
@@ -181,8 +201,8 @@ func (v *requestEditor) makeEditor() fyne.CanvasObject {
 	}
 	nameBar := container.NewBorder(nil, nil, nil, container.NewHBox(
 		widget.NewButton("New tab", v.newRequest), widget.NewButton("Save request", v.saveRequest)), v.name)
-	requestBar := container.NewBorder(nil, nil, v.method, container.NewHBox(v.send, v.cancel), v.url)
-	panels := container.NewVSplit(requestTabs, container.NewBorder(container.NewHBox(v.status, v.duration, v.size), nil, nil, nil, responseTabs))
+	requestBar := container.NewBorder(nil, nil, container.NewThemeOverride(v.method, v.methodColors), container.NewHBox(v.send, v.cancel), v.url)
+	panels := container.NewVSplit(requestTabs, container.NewBorder(container.NewHBox(container.NewThemeOverride(v.status, v.statusColors), v.duration, v.size), nil, nil, nil, responseTabs))
 	panels.Offset = 0.4
 	return container.NewBorder(container.NewVBox(nameBar, requestBar, v.requestError), nil, nil, nil, panels)
 }

@@ -89,10 +89,10 @@ func (v *workspaceView) makeLibrary() fyne.CanvasObject {
 			return len(c.Requests)
 		}
 		return 0
-	}, func() fyne.CanvasObject { return widget.NewLabel("Saved request") }, func(i widget.ListItemID, object fyne.CanvasObject) {
+	}, func() fyne.CanvasObject { return newRequestRow("Saved request") }, func(i widget.ListItemID, object fyne.CanvasObject) {
 		c := v.currentCollection()
 		item := c.Requests[i]
-		object.(*widget.Label).SetText(item.Request.Method + "  " + item.Name)
+		object.(*requestRow).set(item.Request.Method, item.Name)
 	})
 	v.savedList.OnSelected = func(i widget.ListItemID) {
 		c := v.currentCollection()
@@ -179,7 +179,7 @@ func (v *workspaceView) makeLibrary() fyne.CanvasObject {
 		container.NewGridWithColumns(2, renameCollection, deleteCollection), collectionHelp), deleteRequest, nil, nil, v.savedList)
 
 	v.historyList = widget.NewList(func() int { return len(v.store.State.History) }, func() fyne.CanvasObject {
-		return widget.NewLabel("Request\nTimestamp")
+		return newRequestRow("Request\nTimestamp")
 	}, func(i widget.ListItemID, object fyne.CanvasObject) {
 		item := v.store.State.History[i]
 		result := ""
@@ -192,7 +192,7 @@ func (v *workspaceView) makeLibrary() fyne.CanvasObject {
 		if item.Error != "" {
 			result = " · Failed"
 		}
-		object.(*widget.Label).SetText(item.Request.Method + "  " + item.Name + "\n" + item.SentAt.Local().Format("Jan 02 15:04:05") + result)
+		object.(*requestRow).set(item.Request.Method, item.Name+"\n"+item.SentAt.Local().Format("Jan 02 15:04:05")+result)
 	})
 	v.historyList.OnSelected = func(i widget.ListItemID) {
 		item := v.store.State.History[i]
