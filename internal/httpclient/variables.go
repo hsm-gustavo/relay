@@ -35,7 +35,37 @@ func (r Request) ResolveTracked(variables map[string]string) (Request, map[strin
 		name   string
 		target *string
 	}{
-		{"URL", &r.URL}, {"query params", &r.Params}, {"JSON body", &r.Body}, {"timeout", &r.Timeout},
+		{"URL", &r.URL}, {"query params", &r.Params}, {"timeout", &r.Timeout},
+	}
+	switch r.EffectiveBodyType() {
+	case BodyJSON:
+		fields = append(fields, struct {
+			name   string
+			target *string
+		}{"JSON body", &r.Body})
+	case BodyURLEncoded, BodyMultipart:
+		r.FormFields = append([]FormField(nil), r.FormFields...)
+		for i := range r.FormFields {
+			field := &r.FormFields[i]
+			if field.Disabled {
+				continue
+			}
+			fields = append(fields, struct {
+				name   string
+				target *string
+			}{"form field name", &field.Name})
+			if field.Type == "file" {
+				fields = append(fields, struct {
+					name   string
+					target *string
+				}{"upload path", &field.FilePath})
+			} else {
+				fields = append(fields, struct {
+					name   string
+					target *string
+				}{"form value", &field.Value})
+			}
+		}
 	}
 	switch r.Auth.Type {
 	case "Basic":

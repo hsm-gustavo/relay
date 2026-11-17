@@ -63,3 +63,14 @@ func TestSessionConcurrentAccess(t *testing.T) {
 	}
 	wg.Wait()
 }
+
+func TestSessionVariablesInFormBodies(t *testing.T) {
+	var session SessionVariables
+	env := &Environment{ID: "local"}
+	session.Apply(env.ID, extraction.Evaluate(200, []byte(`{"token":"session-token"}`), true, []extraction.Rule{{Path: "$.token", Variable: "token"}}))
+	input := httpclient.Request{BodyType: httpclient.BodyURLEncoded, Body: "{{inactive}}", FormFields: []httpclient.FormField{{Name: "token", Value: "{{token}}"}, {Name: "ignored", Value: "{{missing}}", Disabled: true}}}
+	resolved, sensitive, err := session.Resolve(env, input)
+	if err != nil || !sensitive || resolved.FormFields[0].Value != "session-token" || input.FormFields[0].Value != "{{token}}" {
+		t.Fatal("form values did not use session overlay safely")
+	}
+}

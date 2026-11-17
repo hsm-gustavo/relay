@@ -28,9 +28,11 @@ type Auth struct {
 }
 
 type Request struct {
-	Extract []extraction.Rule `json:",omitempty"`
-	Method  string
-	URL     string
+	BodyType   string            `json:",omitempty"`
+	FormFields []FormField       `json:",omitempty"`
+	Extract    []extraction.Rule `json:",omitempty"`
+	Method     string
+	URL        string
 	// Params contains one unescaped key=value pair per line. Duplicate keys are allowed.
 	Params  string
 	Body    string
@@ -97,19 +99,9 @@ func (r Request) Build(ctx context.Context) (*http.Request, error) {
 		query.Add(strings.TrimSpace(key), value)
 	}
 	u.RawQuery = query.Encode()
-	var body io.Reader
-	if strings.TrimSpace(r.Body) != "" {
-		if !json.Valid([]byte(r.Body)) {
-			return nil, fmt.Errorf("request body must be valid JSON")
-		}
-		body = strings.NewReader(r.Body)
-	}
-	req, err := http.NewRequestWithContext(ctx, r.Method, u.String(), body)
+	req, err := http.NewRequestWithContext(ctx, r.Method, u.String(), nil)
 	if err != nil {
 		return nil, fmt.Errorf("build request: %w", err)
-	}
-	if body != nil {
-		req.Header.Set("Content-Type", "application/json")
 	}
 	switch r.Auth.Type {
 	case "", "None":
@@ -126,6 +118,24 @@ func (r Request) Build(ctx context.Context) (*http.Request, error) {
 		req.Header.Set("Authorization", "Bearer "+token)
 	default:
 		return nil, fmt.Errorf("choose None, Basic, or Bearer authentication")
+	}
+	body, contentType, replay, err := r.body(ctx)
+	if err != nil {
+		return nil, err
+	}
+	req.Body = body
+	req.GetBody = replay
+	if body != nil {
+		req.Header.Set("Content-Type", contentType)
+		if sized, ok := body.(interface{ Len() int }); ok {
+			req.ContentLength = int64(sized.Len())
+			if req.ContentLength == 0 {
+				req.Body = http.NoBody
+			}
+		}
+		if r.EffectiveBodyType() == BodyMultipart {
+			req.ContentLength = -1
+		}
 	}
 	return req, nil
 }
