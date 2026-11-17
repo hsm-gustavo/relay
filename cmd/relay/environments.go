@@ -33,6 +33,11 @@ func (v *workspaceView) refreshEnvironments() {
 }
 
 func (v *workspaceView) environmentBar() fyne.CanvasObject {
+	clearSession := widget.NewButton("Clear session", func() {
+		if env := v.store.State.ActiveEnvironment(); env != nil {
+			v.session.Clear(env.ID)
+		}
+	})
 	edit := widget.NewButton("Edit environment", func() {
 		if env := v.store.State.ActiveEnvironment(); env != nil {
 			v.editEnvironment(env)
@@ -48,6 +53,7 @@ func (v *workspaceView) environmentBar() fyne.CanvasObject {
 			if !ok {
 				return
 			}
+			v.session.Clear(id)
 			v.store.State.DeleteEnvironment(id)
 			v.refreshEnvironments()
 			v.persist()
@@ -64,9 +70,11 @@ func (v *workspaceView) environmentBar() fyne.CanvasObject {
 		if v.store.State.ActiveEnvironment() != nil {
 			edit.Enable()
 			remove.Enable()
+			clearSession.Enable()
 		} else {
 			edit.Disable()
 			remove.Disable()
+			clearSession.Disable()
 		}
 		if !v.loading {
 			v.persist()
@@ -74,7 +82,7 @@ func (v *workspaceView) environmentBar() fyne.CanvasObject {
 	})
 	v.environments.PlaceHolder = "Select environment"
 	v.refreshEnvironments()
-	return container.NewHBox(widget.NewLabel("Environment"), v.environments, widget.NewButton("New environment", func() { v.editEnvironment(nil) }), edit, remove, widget.NewButton("Import cURL", v.showCurlImport))
+	return container.NewHBox(widget.NewLabel("Environment"), v.environments, widget.NewButton("New environment", func() { v.editEnvironment(nil) }), edit, remove, widget.NewButton("Import cURL", v.showCurlImport), clearSession)
 }
 
 func (v *workspaceView) editEnvironment(env *workspace.Environment) {

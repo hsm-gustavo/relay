@@ -3,7 +3,10 @@ package main
 import (
 	"context"
 	"fmt"
+	"github.com/hsm-gustavo/relay/internal/extraction"
 	"net/http"
+	"strconv"
+	"strings"
 	"time"
 
 	"fyne.io/fyne/v2"
@@ -16,6 +19,10 @@ import (
 )
 
 type requestEditor struct {
+	extractRules            []extraction.Rule
+	extractResults          []extraction.Result
+	rulesBox, extractionLog *fyne.Container
+	extractionSummary       *widget.Label
 	*workspaceView
 	draft                                                                          workspace.Draft
 	tab                                                                            *container.TabItem
@@ -33,7 +40,7 @@ type requestEditor struct {
 func (v *requestEditor) capture() {
 	d := &v.draft
 	d.Name = v.name.Text
-	d.Request = httpclient.Request{Method: v.method.Selected, URL: v.url.Text, Params: v.params.Text, Body: v.body.Text, Auth: httpclient.Auth{Type: v.auth.Selected, Username: v.username.Text, Password: v.password.Text, Token: v.token.Text}, Timeout: v.timeout.Text}
+	d.Request = httpclient.Request{Method: v.method.Selected, URL: v.url.Text, Params: v.params.Text, Body: v.body.Text, Auth: httpclient.Auth{Type: v.auth.Selected, Username: v.username.Text, Password: v.password.Text, Token: v.token.Text}, Timeout: v.timeout.Text, Extract: append([]extraction.Rule(nil), v.extractRules...)}
 	d.Raw = v.format.Selected == "Raw text"
 }
 
@@ -46,6 +53,7 @@ func (v *requestEditor) changed(clearResponse bool) {
 	if clearResponse {
 		v.draft.Response = nil
 		v.draft.Error = ""
+		v.draft.SessionOnly = false
 		v.showResult()
 	}
 	v.updateTitle()
@@ -56,6 +64,8 @@ func (v *requestEditor) loadDraft(d workspace.Draft) {
 	v.loading = true
 	v.revision++
 	v.draft = d
+	v.extractRules = append([]extraction.Rule(nil), d.Request.Extract...)
+	v.refreshExtractionRules()
 	v.name.SetText(d.Name)
 	method := d.Request.Method
 	if method == "" {
@@ -116,6 +126,10 @@ func (v *requestEditor) showResult() {
 		}
 		v.environmentInfo.SetText("Sent with: " + name)
 		v.environmentInfo.Show()
+	}
+	if d.SessionOnly && d.Response == nil && d.Error == "" && v.cancelRun == nil {
+		v.previewNote.SetText("Session-only response was not retained. Send again to obtain fresh values.")
+		v.previewNote.Show()
 	}
 	v.copyBody.Disable()
 	if d.Error != "" {
@@ -184,6 +198,7 @@ func (v *requestEditor) makeEditor() fyne.CanvasObject {
 			container.NewTabItem("Highlighted preview", v.bodyPreview)))),
 		container.NewTabItem("Authentication", v.authSettings()),
 		container.NewTabItem("Settings", v.timeoutSettings()),
+		container.NewTabItem("Extract", v.extractionSettings()),
 	)
 	v.environmentInfo = widget.NewLabel("")
 	v.environmentInfo.Hide()
@@ -253,20 +268,22 @@ func (v *requestEditor) execute() {
 	}
 	v.capture()
 	snapshot := v.draft.Item
-	var variables map[string]string
 	environmentName := "No environment"
-	if env := v.store.State.ActiveEnvironment(); env != nil {
-		variables = env.Variables
+	environmentID := ""
+	env := v.store.State.ActiveEnvironment()
+	if env != nil {
 		environmentName = env.Name
+		environmentID = env.ID
 	}
-	resolved, err := snapshot.Request.Resolve(variables)
+	resolved, sensitive, err := v.session.Resolve(env, snapshot.Request)
+	sensitive = sensitive || snapshot.Request.HasEnabledExtractionRules()
 	if err != nil {
-		v.failValidation(err)
+		v.failValidation(err, sensitive)
 		return
 	}
 	timeout, err := resolved.TimeoutDuration()
 	if err != nil {
-		v.failValidation(err)
+		v.failValidation(err, sensitive)
 		return
 	}
 	var ctx context.Context
@@ -279,13 +296,14 @@ func (v *requestEditor) execute() {
 	req, err := resolved.Build(ctx)
 	if err != nil {
 		cancel()
-		v.failValidation(err)
+		v.failValidation(err, sensitive)
 		return
 	}
 	v.selectedHistory = ""
 	v.historyList.UnselectAll()
 	id := v.store.State.AddHistory(snapshot)
 	v.store.State.History[0].EnvironmentName = environmentName
+	v.store.State.History[0].SessionOnly = sensitive
 	v.store.State.History[0].ResolvedRequest = &resolved
 	v.historyList.Refresh()
 	if !v.persist() {
@@ -297,6 +315,7 @@ func (v *requestEditor) execute() {
 	revision := v.revision
 	v.cancelRun = cancel
 	v.draft.Response, v.draft.Error = nil, ""
+	v.draft.SessionOnly = sensitive
 	v.draft.EnvironmentName = environmentName
 	v.showResult()
 	v.updateTitle()
@@ -308,15 +327,41 @@ func (v *requestEditor) execute() {
 	go func() {
 		defer cancel()
 		result, err := httpclient.Execute(&client, req)
+		code := 0
+		var body []byte
+		if result != nil {
+			body = result.Body
+			parts := strings.Fields(result.Status)
+			if len(parts) > 0 {
+				code, _ = strconv.Atoi(parts[0])
+			}
+		}
+		results := extraction.Evaluate(code, body, err == nil && result != nil && !result.Incomplete, snapshot.Request.Extract)
 		v.dispatch(func() {
+			targetID := environmentID
+			if targetID != "" {
+				exists := false
+				for _, environment := range v.store.State.Environments {
+					if environment.ID == targetID {
+						exists = true
+						break
+					}
+				}
+				if !exists {
+					targetID = ""
+				}
+			}
+			results = v.session.Apply(targetID, results)
 			v.cancelRun = nil
 			message := httpclient.ErrorMessage(err)
 			v.store.State.CompleteHistory(id, result, message)
 			if !v.closed {
 				v.send.Enable()
+				v.recordExtractionResults(results)
 				v.cancel.Disable()
 				if revision == v.revision {
 					v.draft.Response, v.draft.Error = result, message
+					v.draft.SessionOnly = sensitive
 					v.draft.EnvironmentName = environmentName
 				}
 				v.showResult()
@@ -328,7 +373,8 @@ func (v *requestEditor) execute() {
 	}()
 }
 
-func (v *requestEditor) failValidation(err error) {
+func (v *requestEditor) failValidation(err error, sensitive bool) {
+	v.draft.SessionOnly = sensitive
 	v.draft.Response = nil
 	v.draft.Error = err.Error()
 	v.draft.EnvironmentName = ""

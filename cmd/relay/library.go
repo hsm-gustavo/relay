@@ -193,6 +193,9 @@ func (v *workspaceView) makeLibrary() fyne.CanvasObject {
 		if item.Error != "" {
 			result = " · Failed"
 		}
+		if item.SessionOnly {
+			result += " · Session-only"
+		}
 		if item.EnvironmentName != "" {
 			result += " · " + item.EnvironmentName
 		}
@@ -201,7 +204,7 @@ func (v *workspaceView) makeLibrary() fyne.CanvasObject {
 	v.historyList.OnSelected = func(i widget.ListItemID) {
 		item := v.store.State.History[i]
 		v.selectedHistory = item.ID
-		draft := workspace.Draft{EnvironmentName: item.EnvironmentName, Item: item.Item, Response: item.Response, Error: item.Error, Raw: v.active.draft.Raw}
+		draft := workspace.Draft{SessionOnly: item.SessionOnly, EnvironmentName: item.EnvironmentName, Item: item.Item, Response: item.Response, Error: item.Error, Raw: v.active.draft.Raw}
 		draft.ID = "" // Saving history creates a collection request rather than modifying another saved item.
 		v.openDraft(draft)
 		v.persist()

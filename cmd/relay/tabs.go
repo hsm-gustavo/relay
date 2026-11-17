@@ -27,6 +27,7 @@ type workspaceView struct {
 	editors                                              []*requestEditor
 	active                                               *requestEditor
 	dispatch                                             func(func())
+	session                                              workspace.SessionVariables
 }
 
 func newWorkspaceView(w fyne.Window, client *http.Client, store *workspace.Store) *workspaceView {
