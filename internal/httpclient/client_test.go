@@ -85,6 +85,48 @@ func TestQueryParameters(t *testing.T) {
 	}
 }
 
+func TestURLSchemes(t *testing.T) {
+	for _, tt := range []struct{ input, want string }{
+		{"127.0.0.1:8080", "http://127.0.0.1:8080"},
+		{"localhost:8080/api?q=hello%20world", "http://localhost:8080/api?q=hello+world"},
+		{"example.com", "http://example.com"},
+		{"example.com/api?next=https://other.example", "http://example.com/api?next=https%3A%2F%2Fother.example"},
+		{" example.com/api ", "http://example.com/api"},
+		{"[::1]:8080/api", "http://[::1]:8080/api"},
+		{"//localhost:8080/api", "http://localhost:8080/api"},
+		{"http://example.com", "http://example.com"},
+		{"https://example.com/api", "https://example.com/api"},
+	} {
+		t.Run(tt.input, func(t *testing.T) {
+			req, err := (Request{Method: "GET", URL: tt.input}).Build(context.Background())
+			if err != nil {
+				t.Fatal(err)
+			}
+			if got := req.URL.String(); got != tt.want {
+				t.Errorf("URL = %q, want %q", got, tt.want)
+			}
+		})
+	}
+}
+
+func TestExecuteWithoutScheme(t *testing.T) {
+	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		_, _ = io.WriteString(w, "local response")
+	}))
+	defer server.Close()
+	req, err := (Request{Method: "GET", URL: strings.TrimPrefix(server.URL, "http://")}).Build(context.Background())
+	if err != nil {
+		t.Fatal(err)
+	}
+	result, err := Execute(server.Client(), req)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if string(result.Body) != "local response" {
+		t.Errorf("body = %q", result.Body)
+	}
+}
+
 func TestInvalidRequests(t *testing.T) {
 	tests := []struct {
 		name  string
@@ -94,7 +136,8 @@ func TestInvalidRequests(t *testing.T) {
 		{"missing method", Request{URL: "https://example.com"}, "method"},
 		{"unknown method", Request{Method: "UNKNOWN", URL: "https://example.com"}, "method"},
 		{"missing URL", Request{Method: "GET"}, "complete"},
-		{"missing scheme", Request{Method: "GET", URL: "example.com"}, "complete"},
+		{"malformed HTTP scheme", Request{Method: "GET", URL: "http:/example.com"}, "complete"},
+		{"malformed HTTPS scheme", Request{Method: "GET", URL: "https:example.com"}, "complete"},
 		{"unsupported scheme", Request{Method: "GET", URL: "file:///etc/hosts"}, "complete"},
 		{"missing host", Request{Method: "GET", URL: "https:///path"}, "complete"},
 		{"malformed URL", Request{Method: "GET", URL: "http://["}, "invalid URL"},

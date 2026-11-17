@@ -43,12 +43,23 @@ func (r Request) Build(ctx context.Context) (*http.Request, error) {
 	if !validMethod {
 		return nil, fmt.Errorf("select a supported HTTP method")
 	}
-	u, err := url.Parse(strings.TrimSpace(r.URL))
+	rawURL := strings.TrimSpace(r.URL)
+	scheme, _, hasScheme := strings.Cut(rawURL, "://")
+	hasScheme = hasScheme && !strings.ContainsAny(scheme, "/?#")
+	// Add the scheme before parsing so host:port is not mistaken for a scheme.
+	if strings.HasPrefix(rawURL, "//") {
+		rawURL = "http:" + rawURL
+	} else if rawURL != "" && !hasScheme &&
+		!strings.HasPrefix(strings.ToLower(rawURL), "http:") &&
+		!strings.HasPrefix(strings.ToLower(rawURL), "https:") {
+		rawURL = "http://" + rawURL
+	}
+	u, err := url.Parse(rawURL)
 	if err != nil {
 		return nil, fmt.Errorf("invalid URL: %w", err)
 	}
 	if (u.Scheme != "http" && u.Scheme != "https") || u.Hostname() == "" {
-		return nil, fmt.Errorf("enter a complete http:// or https:// URL")
+		return nil, fmt.Errorf("enter a complete HTTP or HTTPS URL")
 	}
 	query, err := url.ParseQuery(u.RawQuery)
 	if err != nil {

@@ -8,7 +8,7 @@ Run with the Go version specified in `go.mod` and the [Fyne desktop prerequisite
 go run ./cmd/relay
 ```
 
-Choose an HTTP method, enter a complete `http://` or `https://` URL, and click **Send** (or press Enter in the URL field). Supported methods: GET, POST, PUT, PATCH, DELETE, HEAD, OPTIONS, CONNECT, and TRACE. Requests have a 30-second timeout and follow Go's default redirect behavior.
+Choose an HTTP method, enter a URL, and click **Send** (or press Enter in the URL field). URLs without a scheme default to HTTP: `127.0.0.1:8080` becomes `http://127.0.0.1:8080`. Use `https://` explicitly for HTTPS. Supported methods: GET, POST, PUT, PATCH, DELETE, HEAD, OPTIONS, CONNECT, and TRACE. Requests have a 30-second timeout and follow Go's default redirect behavior.
 
 In **Query params**, enter one `key=value` pair per line. Enter values as plain text; Relay handles URL encoding. Repeated names are supported, and parameters are added to any already in the URL:
 
