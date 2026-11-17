@@ -164,7 +164,7 @@ func Execute(client *http.Client, req *http.Request) (*Response, error) {
 
 // FormatBody preserves non-JSON responses and the original bytes in raw mode.
 func FormatBody(body []byte, pretty bool) string {
-	if pretty && len(body) <= 64<<10 && safeJSONDepth(body) {
+	if pretty && CanFormatJSON(body) {
 		var formatted bytes.Buffer
 		if err := json.Indent(&formatted, body, "", "  "); err == nil {
 			return formatted.String()
@@ -220,3 +220,6 @@ func (r Request) HasEnabledExtractionRules() bool {
 	}
 	return false
 }
+
+// CanFormatJSON bounds indentation expansion without changing the original body.
+func CanFormatJSON(body []byte) bool { return len(body) <= 64<<10 && safeJSONDepth(body) }
