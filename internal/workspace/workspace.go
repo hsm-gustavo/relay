@@ -35,7 +35,8 @@ type HistoryItem struct {
 }
 
 type Draft struct {
-	Raw bool
+	TabID string
+	Raw   bool
 	Item
 	CollectionID string
 	Response     *httpclient.Response
@@ -43,6 +44,8 @@ type Draft struct {
 }
 
 type State struct {
+	Tabs                 []Draft
+	ActiveTabID          string
 	SelectedCollectionID string
 	Version              int
 	Collections          []Collection
@@ -162,6 +165,12 @@ func (s *State) DeleteCollection(id string) {
 			break
 		}
 	}
+	for i := range s.Tabs {
+		if s.Tabs[i].CollectionID == id {
+			s.Tabs[i].CollectionID = ""
+			s.Tabs[i].ID = ""
+		}
+	}
 	if s.Draft.CollectionID == id {
 		s.Draft.CollectionID = ""
 		s.Draft.ID = ""
@@ -214,6 +223,11 @@ func (s *State) DeleteRequest(collectionID, id string) {
 				s.Collections[i].Requests = append(s.Collections[i].Requests[:j], s.Collections[i].Requests[j+1:]...)
 				break
 			}
+		}
+	}
+	for i := range s.Tabs {
+		if s.Tabs[i].ID == id {
+			s.Tabs[i].ID = ""
 		}
 	}
 	if s.Draft.ID == id {

@@ -17,12 +17,21 @@ var Methods = []string{
 	http.MethodDelete, http.MethodHead, http.MethodOptions, http.MethodConnect, http.MethodTrace,
 }
 
+type Auth struct {
+	Type     string
+	Username string
+	Password string
+	Token    string
+}
+
 type Request struct {
 	Method string
 	URL    string
 	// Params contains one unescaped key=value pair per line. Duplicate keys are allowed.
-	Params string
-	Body   string
+	Params  string
+	Body    string
+	Auth    Auth
+	Timeout string // Empty uses the default 30 seconds; 0 disables the timeout.
 }
 
 type Response struct {
@@ -90,6 +99,22 @@ func (r Request) Build(ctx context.Context) (*http.Request, error) {
 	}
 	if body != nil {
 		req.Header.Set("Content-Type", "application/json")
+	}
+	switch r.Auth.Type {
+	case "", "None":
+	case "Basic":
+		if strings.Contains(r.Auth.Username, ":") {
+			return nil, fmt.Errorf("Basic Auth username cannot contain a colon")
+		}
+		req.SetBasicAuth(r.Auth.Username, r.Auth.Password)
+	case "Bearer":
+		token := strings.TrimSpace(r.Auth.Token)
+		if token == "" || strings.ContainsAny(token, " \t\r\n") {
+			return nil, fmt.Errorf("enter a bearer token without spaces or line breaks")
+		}
+		req.Header.Set("Authorization", "Bearer "+token)
+	default:
+		return nil, fmt.Errorf("choose None, Basic, or Bearer authentication")
 	}
 	return req, nil
 }
