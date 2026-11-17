@@ -54,8 +54,10 @@ type State struct {
 }
 
 type Store struct {
-	Path  string
-	State State
+	Path    string
+	Warning string
+	State   State
+	bodies  map[*httpclient.Response]string
 }
 
 func DefaultPath() (string, error) {
@@ -67,7 +69,7 @@ func DefaultPath() (string, error) {
 }
 
 func Open(path string) (*Store, error) {
-	s := &Store{Path: path, State: State{Version: 1, Draft: Draft{Item: Item{Request: httpclient.Request{Method: "GET"}}}}}
+	s := &Store{Path: path, State: State{Version: 2, Draft: Draft{Item: Item{Request: httpclient.Request{Method: "GET"}}}}}
 	data, err := os.ReadFile(path)
 	if errors.Is(err, os.ErrNotExist) {
 		return s, nil
@@ -79,10 +81,14 @@ func Open(path string) (*Store, error) {
 	if err := json.Unmarshal(data, &state); err != nil {
 		return nil, fmt.Errorf("read workspace: %w", err)
 	}
-	if state.Version != 1 {
+	if state.Version != 1 && state.Version != 2 {
 		return nil, fmt.Errorf("unsupported workspace version %d", state.Version)
 	}
+	state.Version = 2
 	s.State = state
+	if err := s.loadBodies(); err != nil {
+		return nil, fmt.Errorf("read response body: %w", err)
+	}
 	for i := range s.State.History {
 		if s.State.History[i].Pending {
 			s.State.History[i].Pending = false
@@ -94,7 +100,11 @@ func Open(path string) (*Store, error) {
 
 // Save replaces the previous file only after the complete new contents are synced.
 func (s *Store) Save() error {
-	data, err := json.MarshalIndent(s.State, "", "  ")
+	state, err := s.snapshot()
+	if err != nil {
+		return err
+	}
+	data, err := json.MarshalIndent(state, "", "  ")
 	if err != nil {
 		return err
 	}
@@ -120,6 +130,10 @@ func (s *Store) Save() error {
 	}
 	if err := os.Rename(f.Name(), s.Path); err != nil {
 		return err
+	}
+	s.Warning = ""
+	if err := s.cleanupBodies(state); err != nil {
+		s.Warning = err.Error()
 	}
 	return nil
 }
