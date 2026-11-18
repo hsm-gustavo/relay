@@ -20,6 +20,9 @@ import (
 )
 
 type requestEditor struct {
+	headers                 []httpclient.HeaderField
+	headerRows              *fyne.Container
+	outgoing                *widget.TextGrid
 	viewer                  *responseViewer
 	responseTabs            *container.AppTabs
 	contentType             *widget.Label
@@ -48,6 +51,7 @@ func (v *requestEditor) capture() {
 	d := &v.draft
 	d.Name = v.name.Text
 	d.Request = httpclient.Request{Method: v.method.Selected, URL: v.url.Text, Params: v.params.Text, Body: v.body.Text, Auth: httpclient.Auth{Type: v.auth.Selected, Username: v.username.Text, Password: v.password.Text, Token: v.token.Text}, Timeout: v.timeout.Text, BodyType: v.bodyType.Selected, FormFields: append([]httpclient.FormField(nil), v.formFields...), Extract: append([]extraction.Rule(nil), v.extractRules...)}
+	d.Request.Headers = append([]httpclient.HeaderField(nil), v.headers...)
 	d.Raw = v.format.Selected == responseview.Raw
 	d.ResponseMode = v.format.Selected
 }
@@ -72,6 +76,8 @@ func (v *requestEditor) loadDraft(d workspace.Draft) {
 	v.loading = true
 	v.revision++
 	v.draft = d
+	v.headers = append([]httpclient.HeaderField(nil), d.Request.Headers...)
+	v.refreshHeaderRows()
 	v.formFields = append([]httpclient.FormField(nil), d.Request.FormFields...)
 	v.bodyType.SetSelected(d.Request.EffectiveBodyType())
 	v.refreshFormFields()
@@ -191,6 +197,7 @@ func (v *requestEditor) makeEditor() fyne.CanvasObject {
 	paramsHelp.Wrapping = fyne.TextWrapWord
 	requestTabs := container.NewAppTabs(
 		container.NewTabItem("Query params", container.NewBorder(paramsHelp, nil, nil, nil, v.params)),
+		container.NewTabItem("Request headers", v.headerEditor()),
 		container.NewTabItem("Body", v.bodyEditor()),
 		container.NewTabItem("Authentication", v.authSettings()),
 		container.NewTabItem("Settings", v.timeoutSettings()),
@@ -211,6 +218,8 @@ func (v *requestEditor) makeEditor() fyne.CanvasObject {
 	v.headerNote = widget.NewLabel("")
 	v.headerNote.Wrapping = fyne.TextWrapWord
 	v.headerNote.Hide()
+	v.outgoing = widget.NewTextGrid()
+	v.outgoing.Scroll = fyne.ScrollBoth
 	v.responseTabs = container.NewAppTabs(
 		container.NewTabItem("Response", responseContent),
 		container.NewTabItem("Headers", container.NewBorder(container.NewVBox(widget.NewButton("Copy headers", func() {
@@ -226,6 +235,7 @@ func (v *requestEditor) makeEditor() fyne.CanvasObject {
 			}
 		}), v.headerNote), nil, nil, nil, v.responseHeaders)),
 	)
+	v.responseTabs.Append(container.NewTabItem("Outgoing request", container.NewBorder(widget.NewLabel("Initial request from the last send. Custom header values and credentials are masked."), nil, nil, nil, v.outgoing)))
 	v.send = widget.NewButton("Send", v.execute)
 	v.send.Importance = widget.HighImportance
 	v.cancel = widget.NewButton("Cancel", func() {
@@ -298,6 +308,8 @@ func (v *requestEditor) execute() {
 		return
 	}
 	revision := v.revision
+	preview, _ := boundedPreview(httpclient.InspectRequest(req, sensitive || strings.Contains(snapshot.Request.URL, "{{") || strings.Contains(snapshot.Request.Params, "{{"), resolved.Headers))
+	v.outgoing.SetText(preview)
 	v.cancelRun = cancel
 	v.draft.Response, v.draft.Error = nil, ""
 	v.draft.SessionOnly = sensitive
@@ -309,6 +321,7 @@ func (v *requestEditor) execute() {
 	// The context applies the per-request setting without a shared client timeout capping it.
 	client := *v.client
 	client.Timeout = 0
+	httpclient.GuardRedirect(&client, resolved.Headers)
 	go func() {
 		defer cancel()
 		result, err := httpclient.Execute(&client, req)

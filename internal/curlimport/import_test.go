@@ -57,12 +57,12 @@ func TestUnsupportedAndMalformedImports(t *testing.T) {
 		``, `wget https://example.com`, `curl`, `curl https://a.example https://b.example`,
 		`curl 'unclosed`, `curl https://example.com | sh`, `curl https://example.com; echo hello`, `curl "$URL"`, "curl https://example.com `whoami`", `curl $'ansi'`,
 		`curl -X`, `curl --url=`, `curl -k https://example.com`, `curl --connect-timeout 2 https://example.com`,
-		`curl -F 'file=@-' https://example.com`, `curl -b 'cookie=1' https://example.com`, `curl -H 'Cookie: session=abc' https://example.com`,
+		`curl -F 'file=@-' https://example.com`, `curl -b 'cookie=1' https://example.com`,
 		`curl --data @secret https://example.com`, `curl --header @secret https://example.com`, `curl --data-urlencode 'name@secret' -G https://example.com`,
 		`curl -F 'file=@test;type=image/png' https://example.com`,
 		`curl --json '{}' --json '{}' https://example.com`, `curl -I -X POST https://example.com`, `curl -I --json '{}' https://example.com`,
-		`curl -H 'Content-Type: text/plain' -d '{}' https://example.com`, `curl -H 'Content-Type: application/json' https://example.com`,
-		`curl -H 'Authorization: Digest foo' https://example.com`, `curl -u user https://example.com`, `curl -u user:pass -H 'Authorization: Bearer token' https://example.com`,
+		`curl -H 'Content-Type: text/plain' -d '{}' https://example.com`,
+		`curl -u user https://example.com`, `curl -u user:pass -H 'Authorization: Bearer token' https://example.com`,
 		`curl -m -1 https://example.com`, `curl -m NaN https://example.com`, `curl --request CUSTOM https://example.com`,
 	} {
 		t.Run(command, func(t *testing.T) {
@@ -81,12 +81,15 @@ func TestWarningsAndBuild(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	if len(result.Warnings) != 4 {
+	if len(result.Warnings) != 1 {
 		t.Fatalf("warnings = %v", result.Warnings)
 	}
 	req, err := result.Request.Build(context.Background())
 	if err != nil {
 		t.Fatal(err)
+	}
+	if req.Header.Get("X-Custom") != "value" || req.Header.Get("Accept") != "application/json" {
+		t.Fatal("custom headers were not imported")
 	}
 	if req.Header.Get("Content-Type") != "application/json" || req.Method != "POST" {
 		t.Fatal("JSON request was not built")

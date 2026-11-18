@@ -82,6 +82,19 @@ func (r Request) ResolveTracked(variables map[string]string) (Request, map[strin
 			target *string
 		}{"bearer token", &r.Auth.Token})
 	}
+	r.Headers = append([]HeaderField(nil), r.Headers...)
+	for i := range r.Headers {
+		row := &r.Headers[i]
+		if !row.Disabled {
+			fields = append(fields, struct {
+				name   string
+				target *string
+			}{"header name", &row.Name}, struct {
+				name   string
+				target *string
+			}{"header value", &row.Value})
+		}
+	}
 	for _, field := range fields {
 		value, err := substitute(*field.target, variables, used)
 		if err != nil {

@@ -161,7 +161,7 @@ func Parse(command string) (Result, error) {
 			if option == "--json" {
 				jsonBody = true
 				contentType = "application/json"
-				result.Warnings = append(result.Warnings, "--json's Accept: application/json header is not imported; Relay has no custom request-header editor.")
+
 			}
 
 		case "-L", "--location", "-s", "--silent", "-S", "--show-error", "-i", "--include":
@@ -243,15 +243,15 @@ func Parse(command string) (Result, error) {
 				return Result{}, fmt.Errorf("conflicting Content-Type headers")
 			}
 			contentType = value
-		case "cookie":
-			return Result{}, fmt.Errorf("cookies are not supported by Relay yet")
+
 		case "authorization":
 			if r.Auth.Type != "" {
 				return Result{}, fmt.Errorf("multiple authentication settings are not supported")
 			}
 			scheme, credentials, ok := strings.Cut(value, " ")
 			if !ok {
-				return Result{}, fmt.Errorf("Authorization supports Basic or Bearer only")
+				r.Headers = append(r.Headers, httpclient.HeaderField{Name: name, Value: value})
+				continue
 			}
 			switch strings.ToLower(scheme) {
 			case "bearer":
@@ -267,10 +267,11 @@ func Parse(command string) (Result, error) {
 				}
 				r.Auth = httpclient.Auth{Type: "Basic", Username: user, Password: password}
 			default:
-				return Result{}, fmt.Errorf("Authorization supports Basic or Bearer only")
+				r.Headers = append(r.Headers, httpclient.HeaderField{Name: name, Value: value})
+				continue
 			}
 		default:
-			result.Warnings = append(result.Warnings, fmt.Sprintf("Header %q is not imported; Relay has no custom request-header editor.", strings.TrimSpace(name)))
+			r.Headers = append(r.Headers, httpclient.HeaderField{Name: strings.TrimSpace(name), Value: value})
 		}
 	}
 	if r.BodyType == httpclient.BodyMultipart {
@@ -310,11 +311,27 @@ func Parse(command string) (Result, error) {
 			r.FormFields = fields
 			r.Body = ""
 		}
-	} else if contentType != "" {
-		return Result{}, fmt.Errorf("Relay cannot set Content-Type without a body")
+	}
+	if contentType != "" && r.BodyType != httpclient.BodyMultipart {
+		r.Headers = append(r.Headers, httpclient.HeaderField{Name: "Content-Type", Value: contentType})
+	}
+	if jsonBody {
+		found := false
+		for _, header := range r.Headers {
+			if strings.EqualFold(header.Name, "Accept") {
+				found = true
+			}
+		}
+		if !found {
+			r.Headers = append(r.Headers, httpclient.HeaderField{Name: "Accept", Value: "application/json"})
+		}
 	}
 
-	if !strings.Contains(r.URL+r.Params+r.Body+r.Auth.Username+r.Auth.Password+r.Auth.Token, "{{") {
+	templated := strings.Contains(r.URL+r.Params+r.Body+r.Auth.Username+r.Auth.Password+r.Auth.Token, "{{")
+	for _, header := range r.Headers {
+		templated = templated || strings.Contains(header.Name+header.Value, "{{")
+	}
+	if !templated {
 		if request, err := r.Build(context.Background()); err != nil {
 			return Result{}, err
 		} else if request.Body != nil {

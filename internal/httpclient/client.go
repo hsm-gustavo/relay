@@ -28,6 +28,7 @@ type Auth struct {
 }
 
 type Request struct {
+	Headers    []HeaderField     `json:",omitempty"`
 	BodyType   string            `json:",omitempty"`
 	FormFields []FormField       `json:",omitempty"`
 	Extract    []extraction.Rule `json:",omitempty"`
@@ -103,6 +104,13 @@ func (r Request) Build(ctx context.Context) (*http.Request, error) {
 	if err != nil {
 		return nil, fmt.Errorf("build request: %w", err)
 	}
+	headers, err := r.customHeaders()
+	if err != nil {
+		return nil, err
+	}
+	for name, values := range headers {
+		req.Header[name] = values
+	}
 	switch r.Auth.Type {
 	case "", "None":
 	case "Basic":
@@ -126,7 +134,9 @@ func (r Request) Build(ctx context.Context) (*http.Request, error) {
 	req.Body = body
 	req.GetBody = replay
 	if body != nil {
-		req.Header.Set("Content-Type", contentType)
+		if _, explicit := req.Header["Content-Type"]; !explicit {
+			req.Header.Set("Content-Type", contentType)
+		}
 		if sized, ok := body.(interface{ Len() int }); ok {
 			req.ContentLength = int64(sized.Len())
 			if req.ContentLength == 0 {
