@@ -6,6 +6,7 @@ import (
 	"net/url"
 	"strings"
 	"testing"
+	"time"
 )
 
 func TestCookieScopeAndClear(t *testing.T) {
@@ -73,5 +74,67 @@ func TestCookieLoginAndRedirectReuse(t *testing.T) {
 		if resp.StatusCode != step.status || jar.Used() != strings.EqualFold(step.env, "local") {
 			t.Errorf("step %+v: status=%d cookie use=%v", step, resp.StatusCode, jar.Used())
 		}
+	}
+}
+
+func TestAddManualCookie(t *testing.T) {
+	var sessions SessionCookies
+	parse := func(raw string) *url.URL {
+		t.Helper()
+		target, err := url.Parse(raw)
+		if err != nil {
+			t.Fatal(err)
+		}
+		return target
+	}
+	target := parse("https://api.example.test/login")
+	const secret = "manual-cookie-value"
+	cookie := http.Cookie{Name: "sid", Value: secret, Path: "/api", Secure: true, Expires: time.Now().Add(time.Hour)}
+	if err := sessions.Add("local", target, cookie); err != nil {
+		t.Fatal(err)
+	}
+	matches := sessions.ForRequest("local").Cookies(parse("https://api.example.test/api/users"))
+	if len(matches) != 1 || matches[0].Name != "sid" || matches[0].Value != secret {
+		t.Fatalf("manual cookie was not selected: %d matches", len(matches))
+	}
+	for _, probe := range []struct{ id, raw string }{
+		{"prod", "https://api.example.test/api/users"},
+		{"", "https://api.example.test/api/users"},
+		{"local", "https://sub.api.example.test/api/users"},
+		{"local", "http://api.example.test/api/users"},
+		{"local", "https://api.example.test/login"},
+	} {
+		if len(sessions.Names(probe.id, parse(probe.raw))) != 0 {
+			t.Errorf("cookie escaped scope: %+v", probe)
+		}
+	}
+	sessions.Clear("local")
+	if len(sessions.Names("local", parse("https://api.example.test/api/users"))) != 0 {
+		t.Fatal("manual cookie survived clearing the jar")
+	}
+}
+
+func TestAddRejectsInvalidCookies(t *testing.T) {
+	var sessions SessionCookies
+	https, _ := url.Parse("https://api.example.test")
+	httpURL, _ := url.Parse("http://api.example.test")
+	for _, invalid := range []struct {
+		target *url.URL
+		cookie http.Cookie
+	}{
+		{nil, http.Cookie{Name: "sid", Path: "/"}},
+		{https, http.Cookie{Name: "bad name", Path: "/"}},
+		{https, http.Cookie{Name: "sid", Value: "bad\nvalue", Path: "/"}},
+		{https, http.Cookie{Name: "sid", Path: "relative"}},
+		{https, http.Cookie{Name: "sid", Path: "/", Domain: "example.test"}},
+		{https, http.Cookie{Name: "sid", Path: "/", Expires: time.Now().Add(-time.Hour)}},
+		{httpURL, http.Cookie{Name: "sid", Path: "/", Secure: true}},
+	} {
+		if err := sessions.Add("", invalid.target, invalid.cookie); err == nil {
+			t.Error("accepted an invalid cookie")
+		}
+	}
+	if len(sessions.Names("", https)) != 0 {
+		t.Fatal("invalid cookie reached the jar")
 	}
 }

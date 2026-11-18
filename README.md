@@ -183,4 +183,6 @@ Relay keeps an in-memory cookie jar for each environment, including **No environ
 
 Open **Cookies** to see the names of cookies applicable to the current request URL with values masked. **Clear this environment's cookies** replaces its jar. Requests already in flight remain attached to their original jar. Deleting an environment clears its cookies, and closing Relay ends all cookie sessions.
 
+Choose **Add cookie** to seed the selected environment from the current request URL. Enter the name and value and optionally change the path, expiry, or Secure setting. Cookies are host-only and default to path `/`. Leave expiry blank for the current session or enter a future RFC3339 timestamp such as `2027-01-01T00:00:00Z`. Secure defaults to enabled for HTTPS requests. An expiry timestamp still applies only within the current Relay session.
+
 Cookie jars are never written to the workspace. Responses and resolved history for requests that use or receive cookies stay in memory, including cookie activity on redirect hops. The outgoing-request inspector displays the initial application headers before jar cookies are attached. Literal Cookie headers entered in a request template follow the existing rules for user-entered credentials.
