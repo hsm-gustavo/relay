@@ -1,0 +1,18 @@
+version: 2
+project_name: relay
+
+# Fyne builds the desktop packages on the target platforms.
+builds:
+  - skip: true
+
+checksum:
+  name_template: checksums.txt
+  extra_files:
+    - glob: '{{ .Env.RELEASE_ASSETS }}/Relay-*.tar.xz'
+    - glob: '{{ .Env.RELEASE_ASSETS }}/Relay-*.exe'
+
+release:
+  draft: true
+  extra_files:
+    - glob: '{{ .Env.RELEASE_ASSETS }}/Relay-*.tar.xz'
+    - glob: '{{ .Env.RELEASE_ASSETS }}/Relay-*.exe'

@@ -33,7 +33,7 @@ go vet ./...
 
 ## Package the desktop app
 
-Install the [Fyne CLI](https://docs.fyne.io/started/packaging/) with `go install fyne.io/tools/cmd/fyne@latest`. Run packaging from the main package directory so Fyne reads `FyneApp.toml` and the bundled `Icon.png`.
+Install the [Fyne CLI](https://docs.fyne.io/started/packaging/) with `go install fyne.io/tools/cmd/fyne@v1.7.4`. Run packaging from the main package directory so Fyne reads `FyneApp.toml` and the bundled `Icon.png`.
 
 ```sh
 cd cmd/relay
@@ -41,6 +41,17 @@ fyne package -os linux -release
 ```
 
 Use `-os darwin` on macOS or `-os windows` on Windows with the corresponding native toolchain. For a release, override the package version and build number with `-app-version` and `-app-build` as needed. The same PNG is embedded for regular `go run ./cmd/relay` and Go builds.
+
+## CI and GitHub releases
+
+The [Go workflow](https://github.com/hsm-gustavo/relay/actions/workflows/go.yaml) builds Relay, runs tests with the race detector, and runs `go vet` on pushes and pull requests targeting `main` or `develop`. It selects Go from `go.mod`.
+
+Push a new version tag in the existing `MAJOR.MINOR.PATCH` format to start the [Release workflow](https://github.com/hsm-gustavo/relay/actions/workflows/release.yaml). Fyne packages the app on Ubuntu 22.04 and Windows using the version from the tag. Once checks pass, GoReleaser creates a draft GitHub release with release notes, SHA-256 checksums, and both packages.
+
+- `Relay-<version>-linux-amd64.tar.xz` with the executable, desktop entry, and icon.
+- `Relay-<version>-windows-amd64.exe` with the embedded icon and version metadata. The executable is unsigned.
+
+Review the draft and try the packages on their target systems before publishing. To build packages for review without creating a release, use **Actions → Release → Run workflow**, choose a branch, and download the packages from that run’s artifacts.
 
 ## Collections and history
 

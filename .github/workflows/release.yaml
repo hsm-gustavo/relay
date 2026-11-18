@@ -1,0 +1,137 @@
+name: Release
+
+on:
+  push:
+    tags: ['[0-9]+.[0-9]+.[0-9]+']
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  test:
+    uses: ./.github/workflows/go.yaml
+
+  package:
+    name: Package ${{ matrix.target }} amd64
+    strategy:
+      matrix:
+        include:
+          - runner: ubuntu-22.04
+            target: linux
+            package: Relay.tar.xz
+            extension: tar.xz
+          - runner: windows-latest
+            target: windows
+            package: Relay.exe
+            extension: exe
+    runs-on: ${{ matrix.runner }}
+    env:
+      CGO_ENABLED: '1'
+    steps:
+      - name: Check out source
+        uses: actions/checkout@v7
+        with:
+          persist-credentials: false
+
+      - name: Set up Go
+        uses: actions/setup-go@v7
+        with:
+          go-version-file: go.mod
+          cache-dependency-path: go.sum
+
+      - name: Install Linux build dependencies
+        if: matrix.target == 'linux'
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y gcc libgl1-mesa-dev libwayland-dev libxkbcommon-dev xorg-dev xz-utils
+
+      - name: Install Windows GCC
+        if: matrix.target == 'windows'
+        id: msys2
+        uses: msys2/setup-msys2@v2
+        with:
+          msystem: UCRT64
+          install: mingw-w64-ucrt-x86_64-gcc
+
+      - name: Add Windows GCC to PATH
+        if: matrix.target == 'windows'
+        shell: pwsh
+        env:
+          MSYS2_LOCATION: ${{ steps.msys2.outputs.msys2-location }}
+        run: Join-Path $env:MSYS2_LOCATION 'ucrt64\bin' >> $env:GITHUB_PATH
+
+      - name: Install Fyne CLI
+        shell: bash
+        env:
+          GOBIN: ${{ runner.temp }}/fyne-bin
+        run: |
+          go install fyne.io/tools/cmd/fyne@v1.7.4
+          echo "$GOBIN" >> "$GITHUB_PATH"
+
+      - name: Build desktop package
+        shell: bash
+        working-directory: cmd/relay
+        env:
+          TARGET_OS: ${{ matrix.target }}
+          PACKAGE_FILE: ${{ matrix.package }}
+          PACKAGE_EXTENSION: ${{ matrix.extension }}
+          RELEASE_ASSETS: ${{ runner.temp }}/relay-packages
+        run: |
+          version_flags=()
+          label=snapshot
+          if [[ "$GITHUB_EVENT_NAME" == push ]]; then
+            label="$GITHUB_REF_NAME"
+            version_flags=(-app-version "$label")
+          fi
+
+          fyne package -os "$TARGET_OS" -release -app-build "$GITHUB_RUN_NUMBER" "${version_flags[@]}"
+          test -s "$PACKAGE_FILE"
+          mkdir -p "$RELEASE_ASSETS"
+          mv "$PACKAGE_FILE" "$RELEASE_ASSETS/Relay-$label-$TARGET_OS-amd64.$PACKAGE_EXTENSION"
+
+      - name: Upload desktop package
+        uses: actions/upload-artifact@v7
+        with:
+          name: relay-${{ matrix.target }}-amd64
+          path: ${{ runner.temp }}/relay-packages/
+          if-no-files-found: error
+          overwrite: true
+
+  publish:
+    name: Create draft GitHub release
+    if: github.event_name == 'push'
+    needs: [test, package]
+    runs-on: ubuntu-22.04
+    permissions:
+      contents: write
+    steps:
+      - name: Check out release history
+        uses: actions/checkout@v7
+        with:
+          fetch-depth: 0
+          persist-credentials: false
+
+      - name: Download desktop packages
+        id: packages
+        uses: actions/download-artifact@v7
+        with:
+          pattern: relay-*-amd64
+          merge-multiple: true
+          path: ${{ runner.temp }}/relay-packages
+
+      - name: Verify both packages are present
+        env:
+          RELEASE_ASSETS: ${{ steps.packages.outputs.download-path }}
+        run: |
+          test -s "$RELEASE_ASSETS/Relay-$GITHUB_REF_NAME-linux-amd64.tar.xz"
+          test -s "$RELEASE_ASSETS/Relay-$GITHUB_REF_NAME-windows-amd64.exe"
+
+      - name: Run GoReleaser
+        uses: goreleaser/goreleaser-action@v7
+        with:
+          version: v2.20.2
+          args: release --clean
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          RELEASE_ASSETS: ${{ steps.packages.outputs.download-path }}
