@@ -1,5 +1,7 @@
 # Relay
 
+[![Go tests](https://github.com/hsm-gustavo/relay/actions/workflows/go.yaml/badge.svg)](https://github.com/hsm-gustavo/relay/actions/workflows/go.yaml)
+
 A desktop HTTP client built with Go and Fyne.
 
 Run with the Go version specified in `go.mod` and the [Fyne desktop prerequisites](https://docs.fyne.io/started/):

@@ -1,0 +1,41 @@
+name: Go
+
+on:
+  push:
+    branches: [main, develop]
+  pull_request:
+    branches: [main, develop]
+  workflow_call:
+
+permissions:
+  contents: read
+
+jobs:
+  test:
+    name: Build and test
+    runs-on: ubuntu-22.04
+    steps:
+      - name: Check out source
+        uses: actions/checkout@v7
+        with:
+          persist-credentials: false
+
+      - name: Set up Go
+        uses: actions/setup-go@v7
+        with:
+          go-version-file: go.mod
+          cache-dependency-path: go.sum
+
+      - name: Install Fyne build dependencies
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y gcc libgl1-mesa-dev libwayland-dev libxkbcommon-dev xorg-dev
+
+      - name: Build
+        run: go build -v ./...
+
+      - name: Test
+        run: go test -v -race ./...
+
+      - name: Vet
+        run: go vet ./...
