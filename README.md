@@ -43,6 +43,12 @@ The archive is written to `cmd/relay/Relay.tar.xz`. Extract it, then run `make u
 
 On macOS and Windows, package from `cmd/relay` with `fyne package -os darwin -release` or `fyne package -os windows -release` using the corresponding native toolchain. Override the package version and build number with `-app-version` and `-app-build` as needed. The same PNG is embedded for regular `go run ./cmd/relay` and Go builds.
 
+## Documentation website
+
+The user guide lives in `docs/`. Preview it from the repository root with `python3 -m http.server 8000 --bind 127.0.0.1 --directory docs`, then open `http://127.0.0.1:8000`.
+
+To publish it on GitHub Pages, use **Settings → Pages → Deploy from a branch** and select **main** and **/docs**. [GitHub Pages publishing instructions](https://docs.github.com/en/pages/getting-started-with-github-pages/configuring-a-publishing-source-for-your-github-pages-site)
+
 ## CI and GitHub releases
 
 The [Go workflow](https://github.com/hsm-gustavo/relay/actions/workflows/go.yaml) builds Relay, runs tests with the race detector, and runs `go vet` on pushes and pull requests targeting `main` or `develop`. It selects Go from `go.mod`.
