@@ -1,0 +1,11 @@
+[Details]
+Icon = "Icon.png"
+Name = "Relay"
+ID = "com.github.hsm-gustavo.relay"
+Version = "1.3.0"
+Build = 1
+
+[LinuxAndBSD]
+GenericName = "HTTP Client"
+Categories = ["Development", "Network"]
+Comment = "Build and inspect HTTP requests"

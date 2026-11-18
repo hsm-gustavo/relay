@@ -29,6 +29,17 @@ go test ./...
 go vet ./...
 ```
 
+## Package the desktop app
+
+Install the [Fyne CLI](https://docs.fyne.io/started/packaging/) with `go install fyne.io/tools/cmd/fyne@latest`. Run packaging from the main package directory so Fyne reads `FyneApp.toml` and the bundled `Icon.png`.
+
+```sh
+cd cmd/relay
+fyne package -os linux -release
+```
+
+Use `-os darwin` on macOS or `-os windows` on Windows with the corresponding native toolchain. For a release, override the package version and build number with `-app-version` and `-app-build` as needed. The same PNG is embedded for regular `go run ./cmd/relay` and Go builds.
+
 ## Collections and history
 
 Use **New collection** in the sidebar to create a local collection. Give the current request a name and click **Save request** to add it to the selected collection. Select a saved request to reopen it, edit its name/method/URL/parameters/body, and click **Save request** to update it. Select a different collection before saving to move the request there. **New tab** (or the + button) starts a separate request. Collections can be renamed or deleted; deleting a collection removes its saved requests but keeps history.

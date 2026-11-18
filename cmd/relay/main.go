@@ -1,6 +1,7 @@
 package main
 
 import (
+	_ "embed"
 	"fmt"
 	"net/http"
 
@@ -11,8 +12,12 @@ import (
 	"github.com/hsm-gustavo/relay/internal/workspace"
 )
 
+//go:embed Icon.png
+var iconPNG []byte
+
 func main() {
-	a := app.New()
+	a := app.NewWithID("com.github.hsm-gustavo.relay")
+	a.SetIcon(fyne.NewStaticResource("Icon.png", iconPNG))
 	w := a.NewWindow("Relay")
 	w.Resize(fyne.NewSize(1280, 800))
 	path, err := workspace.DefaultPath()
