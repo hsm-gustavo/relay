@@ -307,6 +307,8 @@ func (v *requestEditor) execute() {
 		v.failValidation(err, sensitive)
 		return
 	}
+	sensitive = sensitive || len(req.Header.Values("Cookie")) > 0
+	cookieUse := v.cookies.ForRequest(environmentID)
 	v.selectedHistory = ""
 	v.historyList.UnselectAll()
 	id := v.store.State.AddHistory(snapshot)
@@ -334,12 +336,19 @@ func (v *requestEditor) execute() {
 	// The context applies the per-request setting without a shared client timeout capping it.
 	client := *v.client
 	client.Timeout = 0
+	client.Jar = cookieUse
 	redirectURLMasked := sensitive
 	go func() {
 		var hops []httpclient.RedirectHop
 		httpclient.ConfigureRedirects(&client, resolved, redirectURLMasked, func(hop httpclient.RedirectHop) { hops = append(hops, hop) })
 		defer cancel()
 		result, err := httpclient.Execute(&client, req)
+		cookieSensitive := cookieUse.Used() || (result != nil && len(result.Headers.Values("Set-Cookie")) > 0)
+		if cookieSensitive {
+			for i := range hops {
+				hops[i].Destination = "[masked]"
+			}
+		}
 		if result != nil {
 			result.Redirects = hops
 		}
@@ -370,6 +379,13 @@ func (v *requestEditor) execute() {
 			results = v.session.Apply(targetID, results)
 			v.cancelRun = nil
 			message := httpclient.ErrorMessage(err)
+			private := sensitive || cookieSensitive
+			for i := range v.store.State.History {
+				if v.store.State.History[i].ID == id {
+					v.store.State.History[i].SessionOnly = private
+					break
+				}
+			}
 			v.store.State.CompleteHistory(id, result, message)
 			if !v.closed {
 				v.send.Enable()
@@ -377,7 +393,7 @@ func (v *requestEditor) execute() {
 				v.cancel.Disable()
 				if revision == v.revision {
 					v.draft.Response, v.draft.Error = result, message
-					v.draft.SessionOnly = sensitive
+					v.draft.SessionOnly = private
 					v.draft.EnvironmentName = environmentName
 				}
 				v.showResult()

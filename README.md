@@ -165,3 +165,11 @@ cURL import preserves supported explicit headers and the Accept header implied b
 Requests follow redirects by default. Enable **Stop at first redirect** in **Settings** to inspect the first redirect response, including its headers and retained body. The setting is saved with the request.
 
 The **Redirects** tab lists each redirect decision with the status, proposed next method, and destination. It includes the final decision when Relay stops following. The viewer masks query values and hides destinations for session-sensitive requests. On a transport failure, any recorded hops remain visible in the active tab. Custom headers and credentials stay on the original origin.
+
+## Session cookies
+
+Relay keeps an in-memory cookie jar for each environment, including **No environment**. Cookies follow the standard library's domain, path, expiry, and secure-transport rules with a public-suffix policy. Redirects can set cookies, and subsequent requests in the same environment can use them.
+
+Open **Cookies** to see the names of cookies applicable to the current request URL with values masked. **Clear this environment's cookies** replaces its jar. Requests already in flight remain attached to their original jar. Deleting an environment clears its cookies, and closing Relay ends all cookie sessions.
+
+Cookie jars are never written to the workspace. Responses and resolved history for requests that use or receive cookies stay in memory, including cookie activity on redirect hops. The outgoing-request inspector displays the initial application headers before jar cookies are attached. Literal Cookie headers entered in a request template follow the existing rules for user-entered credentials.

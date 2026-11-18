@@ -16,6 +16,7 @@ import (
 )
 
 type workspaceView struct {
+	cookies                                              workspace.SessionCookies
 	window                                               fyne.Window
 	client                                               *http.Client
 	store                                                *workspace.Store
