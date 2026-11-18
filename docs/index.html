@@ -3,15 +3,15 @@
 <head>
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
-  <meta name="description" content="Install Relay, send HTTP requests, and learn to inspect responses, manage collections, and work with environments.">
-  <meta name="theme-color" content="#0c1220">
-  <title>Relay Documentation</title>
+  <meta name="description" content="Relay is a desktop HTTP client for building requests, inspecting responses, and managing local collections. Download Relay for Linux or Windows.">
+  <meta name="theme-color" content="#f8f7fc">
+  <title>Relay — Desktop HTTP client</title>
   <link rel="icon" href="assets/relay-icon.png" type="image/png">
   <link rel="stylesheet" href="styles.css">
   <script src="docs.js" defer></script>
 </head>
 <body id="top">
-  <a class="skip-link" href="#documentation">Skip to documentation</a>
+  <a class="skip-link" href="#page-title">Skip to content</a>
 
   <header class="site-header">
     <div class="wrap header-inner">
@@ -19,10 +19,9 @@
         <img src="assets/relay-icon.png" alt="" width="32" height="32">
         <span>Relay</span>
       </a>
-      <span class="header-label">Docs</span>
-      <nav class="header-links" aria-label="Project links">
-        <a class="source-link" href="https://github.com/hsm-gustavo/relay">GitHub <span aria-hidden="true">↗</span></a>
-        <a class="download-link" href="https://github.com/hsm-gustavo/relay/releases/latest">Download <span aria-hidden="true">↓</span></a>
+      <nav class="header-links" aria-label="Main navigation">
+        <a href="#documentation">Guide</a>
+        <a href="https://github.com/hsm-gustavo/relay">GitHub</a>
       </nav>
     </div>
   </header>
@@ -30,24 +29,60 @@
   <main>
     <section class="hero" aria-labelledby="page-title">
       <div class="wrap hero-inner">
-        <div class="hero-copy">
-          <h1 id="page-title">Relay <span>documentation</span></h1>
-          <p>Install Relay, send your first HTTP request, and learn how to inspect responses and organize your API work.</p>
-          <div class="hero-actions">
-            <a class="button" href="#install">Install Relay <span aria-hidden="true">↓</span></a>
-            <a class="text-link" href="#first-request">Send your first request <span aria-hidden="true">→</span></a>
+        <div class="hero-intro">
+          <h1 id="page-title" tabindex="-1">A desktop<br> HTTP client.</h1>
+          <div class="hero-copy">
+            <p>Build HTTP requests, inspect responses, and keep your API work in local collections.</p>
+            <div class="hero-actions">
+              <a class="button" href="#install">Download Relay</a>
+              <p class="availability">Linux and Windows · x86-64</p>
+            </div>
           </div>
         </div>
-        <figure class="hero-preview">
-          <img src="assets/workspace.webp" alt="Relay showing a saved GET request, its 200 OK status, and a formatted JSON response." width="1280" height="800">
-        </figure>
+
+        <div class="workspace">
+          <figure class="workspace-figure">
+            <div class="workspace-image">
+              <img src="assets/workspace.webp" alt="Relay with the Example API collection open, a GET request selected, and its 200 OK JSON response below the editor." width="1280" height="800">
+            </div>
+            <figcaption>
+              <span>Relay desktop app · Example API collection</span>
+              <a href="assets/workspace.webp">View full-size screenshot</a>
+            </figcaption>
+          </figure>
+
+          <div class="workspace-index">
+            <h2>Explore the workspace</h2>
+            <div class="workspace-topics">
+              <details class="workspace-topic" name="workspace" id="workspace-request">
+                <summary>Request editor</summary>
+                <div class="workspace-detail" aria-hidden="true"></div>
+                <p>Build a request in its own tab. Set headers, add a body, or import an existing cURL command.</p>
+                <a href="#build-requests">Build requests</a>
+              </details>
+              <details class="workspace-topic" name="workspace" id="workspace-response" open>
+                <summary>Response viewer</summary>
+                <div class="workspace-detail" aria-hidden="true"></div>
+                <p>See the status and timing, then search the body or explore JSON as a tree.</p>
+                <a href="#responses">Inspect responses</a>
+              </details>
+              <details class="workspace-topic" name="workspace" id="workspace-collection">
+                <summary>Local collections</summary>
+                <div class="workspace-detail" aria-hidden="true"></div>
+                <p>Save requests together and reopen past responses from your workspace history.</p>
+                <a href="#collections">Manage collections</a>
+              </details>
+            </div>
+            <a class="workspace-next" href="#first-request">Send your first request</a>
+          </div>
+        </div>
       </div>
     </section>
 
     <div class="wrap documentation" id="documentation" tabindex="-1">
       <aside class="contents">
-        <nav aria-label="On this page">
-          <p class="contents-heading">On this page</p>
+        <nav aria-labelledby="guide-title">
+          <h2 class="contents-heading" id="guide-title">User guide</h2>
           <ul>
             <li><a href="#install">Install Relay</a></li>
             <li><a href="#first-request">Send your first request</a></li>
@@ -65,12 +100,14 @@
       <article class="guide" aria-label="Relay user guide">
         <section id="install">
           <h2>Install Relay</h2>
-          <p>Prebuilt packages are available for 64-bit Linux and Windows on x86-64. Open the latest release and choose the file for your system under <strong>Assets</strong>. <a href="https://github.com/hsm-gustavo/relay/releases/latest">Latest release ↗</a></p>
+          <p>Find the package for your system under <strong>Assets</strong> on GitHub. Both builds target x86-64.</p>
+
+          <a class="button" href="https://github.com/hsm-gustavo/relay/releases/latest">Open latest release on GitHub</a>
 
           <div class="platforms">
             <div class="platform">
               <h3>Linux</h3>
-              <p>Download <code>Relay-&lt;version&gt;-linux-amd64.tar.xz</code>. With <code>tar</code>, <code>xz</code>, and <code>make</code> installed, run the following in your download directory. Use the actual filename if your version differs.</p>
+              <p>Download <code>Relay-&lt;version&gt;-linux-amd64.tar.xz</code>. With <code>tar</code>, <code>xz</code>, and <code>make</code> installed, run the following in your download directory. The command below uses version 1.4.1 as an example. Use the filename of the archive you downloaded.</p>
               <div class="snippet">
                 <pre><code>tar -xJf Relay-1.4.1-linux-amd64.tar.xz
 cd relay
@@ -87,7 +124,7 @@ make user-install</code></pre>
 
           <details>
             <summary>Run from source</summary>
-            <p>Clone the repository, install the Go version specified in <code>go.mod</code>, and set up the Fyne desktop prerequisites for your platform. <a href="https://docs.fyne.io/started/quick/">Fyne prerequisites ↗</a></p>
+            <p>Clone the repository, install the Go version specified in <code>go.mod</code>, and set up the Fyne desktop prerequisites for your platform. <a href="https://docs.fyne.io/started/quick/">Fyne prerequisites</a></p>
             <div class="snippet">
               <pre><code>go run ./cmd/relay</code></pre>
             </div>
@@ -246,9 +283,9 @@ make user-install</code></pre>
         <span>Relay</span>
       </a>
       <nav aria-label="Footer links">
-        <a href="https://github.com/hsm-gustavo/relay">Source ↗</a>
-        <a href="https://github.com/hsm-gustavo/relay/releases">All releases ↗</a>
-        <a href="#top">Back to top ↑</a>
+        <a href="https://github.com/hsm-gustavo/relay">Source</a>
+        <a href="https://github.com/hsm-gustavo/relay/releases">All releases</a>
+        <a href="#top">Back to top</a>
       </nav>
     </div>
   </footer>
