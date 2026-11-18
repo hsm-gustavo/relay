@@ -1,0 +1,256 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="description" content="Install Relay, send HTTP requests, and learn to inspect responses, manage collections, and work with environments.">
+  <meta name="theme-color" content="#0c1220">
+  <title>Relay Documentation</title>
+  <link rel="icon" href="assets/relay-icon.png" type="image/png">
+  <link rel="stylesheet" href="styles.css">
+  <script src="docs.js" defer></script>
+</head>
+<body id="top">
+  <a class="skip-link" href="#documentation">Skip to documentation</a>
+
+  <header class="site-header">
+    <div class="wrap header-inner">
+      <a href="#top" class="brand">
+        <img src="assets/relay-icon.png" alt="" width="32" height="32">
+        <span>Relay</span>
+      </a>
+      <span class="header-label">Docs</span>
+      <nav class="header-links" aria-label="Project links">
+        <a class="source-link" href="https://github.com/hsm-gustavo/relay">GitHub <span aria-hidden="true">↗</span></a>
+        <a class="download-link" href="https://github.com/hsm-gustavo/relay/releases/latest">Download <span aria-hidden="true">↓</span></a>
+      </nav>
+    </div>
+  </header>
+
+  <main>
+    <section class="hero" aria-labelledby="page-title">
+      <div class="wrap hero-inner">
+        <div class="hero-copy">
+          <h1 id="page-title">Relay <span>documentation</span></h1>
+          <p>Install Relay, send your first HTTP request, and learn how to inspect responses and organize your API work.</p>
+          <div class="hero-actions">
+            <a class="button" href="#install">Install Relay <span aria-hidden="true">↓</span></a>
+            <a class="text-link" href="#first-request">Send your first request <span aria-hidden="true">→</span></a>
+          </div>
+        </div>
+        <figure class="hero-preview">
+          <img src="assets/workspace.webp" alt="Relay showing a saved GET request, its 200 OK status, and a formatted JSON response." width="1280" height="800">
+        </figure>
+      </div>
+    </section>
+
+    <div class="wrap documentation" id="documentation" tabindex="-1">
+      <aside class="contents">
+        <nav aria-label="On this page">
+          <p class="contents-heading">On this page</p>
+          <ul>
+            <li><a href="#install">Install Relay</a></li>
+            <li><a href="#first-request">Send your first request</a></li>
+            <li><a href="#build-requests">Build requests</a></li>
+            <li><a href="#responses">Inspect responses</a></li>
+            <li><a href="#collections">Collections and history</a></li>
+            <li><a href="#environments">Environments and variables</a></li>
+            <li><a href="#cookies">Session cookies</a></li>
+            <li><a href="#curl">Import cURL</a></li>
+            <li><a href="#troubleshooting">Troubleshooting</a></li>
+          </ul>
+        </nav>
+      </aside>
+
+      <article class="guide" aria-label="Relay user guide">
+        <section id="install">
+          <h2>Install Relay</h2>
+          <p>Prebuilt packages are available for 64-bit Linux and Windows on x86-64. Open the latest release and choose the file for your system under <strong>Assets</strong>. <a href="https://github.com/hsm-gustavo/relay/releases/latest">Latest release ↗</a></p>
+
+          <div class="platforms">
+            <div class="platform">
+              <h3>Linux</h3>
+              <p>Download <code>Relay-&lt;version&gt;-linux-amd64.tar.xz</code>. With <code>tar</code>, <code>xz</code>, and <code>make</code> installed, run the following in your download directory. Use the actual filename if your version differs.</p>
+              <div class="snippet">
+                <pre><code>tar -xJf Relay-1.4.1-linux-amd64.tar.xz
+cd relay
+make user-install</code></pre>
+              </div>
+              <p>Open <strong>Relay</strong> from your application launcher. To uninstall, run <code>make user-uninstall</code> from the same extracted directory.</p>
+            </div>
+            <div class="platform">
+              <h3>Windows</h3>
+              <p>Download <code>Relay-&lt;version&gt;-windows-amd64.exe</code>, move it to a folder where you want to keep it, and double-click it to open Relay.</p>
+              <p>The executable is unsigned, so Windows may show a publisher warning. Verify that you downloaded it from this repository’s release before opening it.</p>
+            </div>
+          </div>
+
+          <details>
+            <summary>Run from source</summary>
+            <p>Clone the repository, install the Go version specified in <code>go.mod</code>, and set up the Fyne desktop prerequisites for your platform. <a href="https://docs.fyne.io/started/quick/">Fyne prerequisites ↗</a></p>
+            <div class="snippet">
+              <pre><code>go run ./cmd/relay</code></pre>
+            </div>
+            <p>Run the command from the repository root.</p>
+          </details>
+        </section>
+
+        <section id="first-request">
+          <h2>Send your first request</h2>
+          <p>Try a public example API to see how Relay builds a request and displays the result.</p>
+          <ol>
+            <li>Open Relay and select <strong>GET</strong> beside the URL field.</li>
+            <li>Enter the following URL.</li>
+          </ol>
+          <div class="snippet">
+            <pre><code>https://jsonplaceholder.typicode.com/todos/1</code></pre>
+          </div>
+          <ol start="3">
+            <li>Click <strong>Send</strong> or press <kbd>Enter</kbd> in the URL field.</li>
+            <li>Look for <strong>200 OK</strong> and the to-do object in <strong>Response → Pretty</strong>.</li>
+          </ol>
+          <div class="note">
+            <p><strong>Testing a local server?</strong> Enter a URL such as <code>127.0.0.1:8080/users</code>. Relay supplies <code>http://</code> for a URL without a scheme. Include <code>https://</code> for HTTPS.</p>
+          </div>
+        </section>
+
+        <section id="build-requests">
+          <h2>Build requests</h2>
+          <p>Choose an HTTP method and a URL, then configure the request using the tabs below the URL bar.</p>
+          <dl class="field-list">
+            <div>
+              <dt>Query params</dt>
+              <dd>Enter one <code>name=value</code> per line. Relay encodes values when it sends the request. You can repeat names and leave values empty.</dd>
+            </div>
+            <div>
+              <dt>Request headers</dt>
+              <dd>Add rows for headers such as <code>Accept: application/json</code>. Disable a row to leave it out of the next request.</dd>
+            </div>
+            <div>
+              <dt>Authentication</dt>
+              <dd>Choose <strong>Basic</strong> for a username and password, <strong>Bearer</strong> for a token, or <strong>None</strong> if the request needs no built-in authentication.</dd>
+            </div>
+            <div>
+              <dt>Settings</dt>
+              <dd>Set a timeout such as <code>20s</code> or <code>500ms</code>. The default is 30 seconds. Use <code>0</code> to disable it. Enable <strong>Stop at first redirect</strong> to inspect the first redirect response.</dd>
+            </div>
+          </dl>
+          <h3>Send JSON or form data</h3>
+          <p>Open <strong>Body</strong>, choose a format, and enter your payload. For a JSON request, an empty editor sends an empty body.</p>
+          <ul>
+            <li><strong>JSON</strong> accepts a JSON value such as <code>{"name":"Ada"}</code>.</li>
+            <li><strong>application/x-www-form-urlencoded</strong> sends ordinary form fields. Click <strong>Add field</strong> for each name and value.</li>
+            <li><strong>multipart/form-data</strong> accepts text and files. Add a field, set its type to <strong>file</strong>, and click <strong>Choose file…</strong> or enter the path. Relay generates the boundary and reads each file when you send the request.</li>
+          </ul>
+          <p>Click <strong>Cancel</strong> beside <strong>Send</strong> to stop a running request. Each tab has its own request and cancel control.</p>
+        </section>
+
+        <section id="responses">
+          <h2>Inspect responses</h2>
+          <p>The response panel shows the HTTP status, duration, retained body size, and Content-Type.</p>
+          <dl class="field-list">
+            <div>
+              <dt>Response</dt>
+              <dd>Choose <strong>Pretty</strong> for formatted JSON, <strong>Raw</strong> for the original text received by Relay, or <strong>Tree</strong> to explore JSON objects and arrays. Text, HTML, and XML are shown as source. Supported images get a preview.</dd>
+            </div>
+            <div>
+              <dt>Headers</dt>
+              <dd>View the headers returned by the server. Use <strong>Copy headers</strong> to copy them.</dd>
+            </div>
+            <div>
+              <dt>Outgoing request</dt>
+              <dd>Inspect the initial application request from the last send. Relay masks credentials, custom header values, and other sensitive fields.</dd>
+            </div>
+            <div>
+              <dt>Redirects</dt>
+              <dd>Review each redirect decision, its status, the proposed method, and the destination when available.</dd>
+            </div>
+          </dl>
+          <p>Use <kbd>Ctrl</kbd> + <kbd>F</kbd> (<kbd>Cmd</kbd> + <kbd>F</kbd> on macOS) to search the response. <strong>Copy response body</strong> copies the available text. <strong>Save response…</strong> writes the retained bytes, including for binaries such as PDF and ZIP.</p>
+          <p>Relay retains up to 16 MiB of body data after decompression. When a transfer is incomplete, Relay labels the partial response and offers <strong>Save partial response…</strong>. Large responses can also have a limited text or JSON preview.</p>
+        </section>
+
+        <section id="collections">
+          <h2>Collections and history</h2>
+          <ol>
+            <li>Click <strong>New collection</strong> in the sidebar and give it a name.</li>
+            <li>Name your request, select the collection, and click <strong>Save request</strong>.</li>
+            <li>Select the request in the collection to reopen it. Click <strong>Save request</strong> again after making changes.</li>
+          </ol>
+          <p>Use <strong>New tab</strong> to work on independent requests. <strong>History</strong> lists requests you’ve sent. Reopen an entry to inspect or resend it, or save it as a collection request.</p>
+          <p>Collections, drafts, environments, and regular history are stored locally and survive restarts. To back up the workspace, keep <code>workspace.json</code> and the sibling <code>bodies</code> directory together. On Linux, both are inside <code>${XDG_CONFIG_HOME:-~/.config}/relay</code>.</p>
+        </section>
+
+        <section id="environments">
+          <h2>Environments and variables</h2>
+          <p>Use environments to switch targets and credentials while keeping the same request template.</p>
+          <ol>
+            <li>Click <strong>New environment</strong>, name it <strong>Local</strong>, and add a variable.</li>
+          </ol>
+          <div class="snippet">
+            <pre><code>base_url=http://localhost:8080</code></pre>
+          </div>
+          <ol start="2">
+            <li>Create a second environment with its own <code>base_url</code>.</li>
+            <li>Set the request URL to <code>{{base_url}}/users</code>. Select the target environment in the top bar and click <strong>Send</strong>.</li>
+          </ol>
+          <p>Use <code>{{name}}</code> in URLs, query parameters, headers, bodies, authentication fields, and timeout settings. Relay substitutes literal values at send time. Inside JSON strings, variable values must already be escaped where needed.</p>
+          <h3>Reuse a value from a response</h3>
+          <p>Open <strong>Extract</strong>, click <strong>Add rule</strong>, and enter a JSON path such as <code>$.access_token</code> and a variable name such as <code>token</code>. Select an environment and send the request.</p>
+          <p>After a complete successful JSON response, a matching string, number, or boolean becomes available as <code>{{token}}</code> in that environment. Nested fields and zero-based indexes such as <code>$.items[0].id</code> are supported. Check <strong>Last run</strong> for rule results. Use <strong>Clear session</strong> to clear overrides and restore the manual values.</p>
+          <div class="note">
+            <p><strong>Storage.</strong> Manual variables and credentials are stored in the local, unencrypted workspace. Extracted values are kept in memory and cleared when Relay exits. Responses tied to extraction rules or session-derived values are also session-only.</p>
+          </div>
+        </section>
+
+        <section id="cookies">
+          <h2>Session cookies</h2>
+          <p>Relay keeps a separate in-memory cookie jar for each environment. Cookies set by a server can be sent by later requests to matching URLs in the same environment.</p>
+          <p>Set the request URL, open <strong>Cookies</strong>, and click <strong>Add cookie</strong> to add a host-only cookie. Enter its name and value, plus an optional path, expiry, or Secure setting. The dialog lists cookies that apply to the current URL and masks their values.</p>
+          <p>Use <strong>Clear this environment’s cookies</strong> to reset the selected jar. Closing Relay clears all cookie jars.</p>
+        </section>
+
+        <section id="curl">
+          <h2>Import cURL</h2>
+          <p>Click <strong>Import cURL</strong> in the top bar, paste a single command, and review the preview. Click <strong>Import</strong> to open it in an editable tab. Relay parses the command as text. You can review the request before sending it.</p>
+          <div class="snippet">
+            <pre><code>curl 'https://jsonplaceholder.typicode.com/todos/1' \
+  --header 'Accept: application/json'</code></pre>
+          </div>
+          <p>Import supports common HTTP methods, headers, authentication, inline bodies, form fields, and timeouts. Use POSIX-style quoting. The preview flags unsupported input or settings that Relay handles differently.</p>
+        </section>
+
+        <section id="troubleshooting">
+          <h2>Troubleshooting</h2>
+          <details>
+            <summary>A request fails before a response arrives</summary>
+            <p>Check the URL, protocol, and port. For a URL with <code>{{variables}}</code>, confirm the correct environment is selected and defines each variable. Check <strong>Settings</strong> for a short timeout.</p>
+          </details>
+          <details>
+            <summary>A Linux launcher entry has no icon</summary>
+            <p>Use the Linux package from version <code>1.4.1</code> or later and rerun <code>make user-install</code> from the extracted directory. The installer puts the icon in the <code>hicolor</code> theme directory.</p>
+          </details>
+          <details>
+            <summary>A history entry has no response after a restart</summary>
+            <p>Relay keeps some responses in memory, including exchanges that use session cookies, enabled extraction rules, or values extracted this session. Reopen and resend the request to fetch a new response.</p>
+          </details>
+        </section>
+      </article>
+    </div>
+  </main>
+
+  <footer class="site-footer">
+    <div class="wrap footer-inner">
+      <a href="#top" class="brand">
+        <img src="assets/relay-icon.png" alt="" width="24" height="24">
+        <span>Relay</span>
+      </a>
+      <nav aria-label="Footer links">
+        <a href="https://github.com/hsm-gustavo/relay">Source ↗</a>
+        <a href="https://github.com/hsm-gustavo/relay/releases">All releases ↗</a>
+        <a href="#top">Back to top ↑</a>
+      </nav>
+    </div>
+  </footer>
+</body>
+</html>
