@@ -35,5 +35,6 @@ func (v *requestEditor) timeoutSettings() fyne.CanvasObject {
 	v.timeout.OnChanged = func(string) { v.changed(true) }
 	help := widget.NewLabel("Timeout includes connecting and reading the complete response. Leave blank for 30s; use 0 for no timeout.")
 	help.Wrapping = fyne.TextWrapWord
-	return container.NewVBox(widget.NewForm(widget.NewFormItem("Timeout", v.timeout)), help)
+	v.stopRedirect = widget.NewCheck("Stop at first redirect", func(bool) { v.changed(true) })
+	return container.NewVBox(widget.NewForm(widget.NewFormItem("Timeout", v.timeout)), help, v.stopRedirect)
 }

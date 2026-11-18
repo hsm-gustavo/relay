@@ -20,6 +20,8 @@ import (
 )
 
 type requestEditor struct {
+	stopRedirect            *widget.Check
+	redirectTimeline        *widget.TextGrid
 	headers                 []httpclient.HeaderField
 	headerRows              *fyne.Container
 	outgoing                *widget.TextGrid
@@ -51,6 +53,7 @@ func (v *requestEditor) capture() {
 	d := &v.draft
 	d.Name = v.name.Text
 	d.Request = httpclient.Request{Method: v.method.Selected, URL: v.url.Text, Params: v.params.Text, Body: v.body.Text, Auth: httpclient.Auth{Type: v.auth.Selected, Username: v.username.Text, Password: v.password.Text, Token: v.token.Text}, Timeout: v.timeout.Text, BodyType: v.bodyType.Selected, FormFields: append([]httpclient.FormField(nil), v.formFields...), Extract: append([]extraction.Rule(nil), v.extractRules...)}
+	d.Request.StopAtRedirect = v.stopRedirect.Checked
 	d.Request.Headers = append([]httpclient.HeaderField(nil), v.headers...)
 	d.Raw = v.format.Selected == responseview.Raw
 	d.ResponseMode = v.format.Selected
@@ -76,6 +79,8 @@ func (v *requestEditor) loadDraft(d workspace.Draft) {
 	v.loading = true
 	v.revision++
 	v.draft = d
+	v.stopRedirect.SetChecked(d.Request.StopAtRedirect)
+	v.showRedirects(nil)
 	v.headers = append([]httpclient.HeaderField(nil), d.Request.Headers...)
 	v.refreshHeaderRows()
 	v.formFields = append([]httpclient.FormField(nil), d.Request.FormFields...)
@@ -130,6 +135,11 @@ func (v *requestEditor) showResult() {
 	v.duration.SetText("Time: —")
 	v.size.SetText("Body size: —")
 	v.viewer.setResponse(d.Response)
+	if d.Response == nil {
+		v.showRedirects(nil)
+	} else {
+		v.showRedirects(d.Response.Redirects)
+	}
 
 	v.requestError.SetText(d.Error)
 	if d.Error == "" {
@@ -220,6 +230,8 @@ func (v *requestEditor) makeEditor() fyne.CanvasObject {
 	v.headerNote.Hide()
 	v.outgoing = widget.NewTextGrid()
 	v.outgoing.Scroll = fyne.ScrollBoth
+	v.redirectTimeline = widget.NewTextGrid()
+	v.redirectTimeline.Scroll = fyne.ScrollBoth
 	v.responseTabs = container.NewAppTabs(
 		container.NewTabItem("Response", responseContent),
 		container.NewTabItem("Headers", container.NewBorder(container.NewVBox(widget.NewButton("Copy headers", func() {
@@ -236,6 +248,7 @@ func (v *requestEditor) makeEditor() fyne.CanvasObject {
 		}), v.headerNote), nil, nil, nil, v.responseHeaders)),
 	)
 	v.responseTabs.Append(container.NewTabItem("Outgoing request", container.NewBorder(widget.NewLabel("Initial request from the last send. Custom header values and credentials are masked."), nil, nil, nil, v.outgoing)))
+	v.responseTabs.Append(container.NewTabItem("Redirects", v.redirectTimeline))
 	v.send = widget.NewButton("Send", v.execute)
 	v.send.Importance = widget.HighImportance
 	v.cancel = widget.NewButton("Cancel", func() {
@@ -321,10 +334,15 @@ func (v *requestEditor) execute() {
 	// The context applies the per-request setting without a shared client timeout capping it.
 	client := *v.client
 	client.Timeout = 0
-	httpclient.GuardRedirect(&client, resolved.Headers)
+	redirectURLMasked := sensitive
 	go func() {
+		var hops []httpclient.RedirectHop
+		httpclient.ConfigureRedirects(&client, resolved, redirectURLMasked, func(hop httpclient.RedirectHop) { hops = append(hops, hop) })
 		defer cancel()
 		result, err := httpclient.Execute(&client, req)
+		if result != nil {
+			result.Redirects = hops
+		}
 		code := 0
 		var body []byte
 		if result != nil {
@@ -363,6 +381,9 @@ func (v *requestEditor) execute() {
 					v.draft.EnvironmentName = environmentName
 				}
 				v.showResult()
+				if revision == v.revision && result == nil {
+					v.showRedirects(hops)
+				}
 				v.updateTitle()
 			}
 			v.historyList.Refresh()
@@ -378,4 +399,17 @@ func (v *requestEditor) failValidation(err error, sensitive bool) {
 	v.draft.EnvironmentName = ""
 	v.showResult()
 	v.persist()
+}
+
+func (v *requestEditor) showRedirects(hops []httpclient.RedirectHop) {
+	if len(hops) == 0 {
+		v.redirectTimeline.SetText("No redirect hops recorded.")
+		return
+	}
+	var text strings.Builder
+	for i, hop := range hops {
+		fmt.Fprintf(&text, "%d. %s → %s %s\n", i+1, hop.Status, hop.Method, hop.Destination)
+	}
+	preview, _ := boundedPreview(text.String())
+	v.redirectTimeline.SetText(preview)
 }

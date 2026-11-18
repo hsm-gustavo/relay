@@ -47,3 +47,24 @@ func sameOrigin(a, b *url.URL) bool {
 	}
 	return a.Scheme == b.Scheme && strings.EqualFold(a.Hostname(), b.Hostname()) && port(a) == port(b)
 }
+
+// RedirectHop describes the response which triggered a redirect and the proposed next request.
+type RedirectHop struct {
+	Status      string
+	Method      string
+	Destination string
+}
+
+func ConfigureRedirects(client *http.Client, r Request, masked bool, record func(RedirectHop)) {
+	GuardRedirect(client, r.Headers)
+	follow := client.CheckRedirect
+	client.CheckRedirect = func(next *http.Request, via []*http.Request) error {
+		if next.Response != nil {
+			record(RedirectHop{Status: next.Response.Status, Method: next.Method, Destination: DisplayURL(next.URL, masked)})
+		}
+		if r.StopAtRedirect {
+			return http.ErrUseLastResponse
+		}
+		return follow(next, via)
+	}
+}

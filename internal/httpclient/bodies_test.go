@@ -163,8 +163,12 @@ func TestUploadRedirectAndEcho(t *testing.T) {
 		t.Fatal(err)
 	}
 	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		if r.URL.Path == "/redirect" {
+		switch r.URL.Path {
+		case "/307":
 			http.Redirect(w, r, "/upload", http.StatusTemporaryRedirect)
+			return
+		case "/308":
+			http.Redirect(w, r, "/upload", http.StatusPermanentRedirect)
 			return
 		}
 		if err := r.ParseMultipartForm(32 << 10); err != nil {
@@ -187,15 +191,21 @@ func TestUploadRedirectAndEcho(t *testing.T) {
 		_, _ = io.WriteString(w, `{"ok":true}`)
 	}))
 	defer server.Close()
-	req, err := (Request{Method: "POST", URL: server.URL + "/redirect", BodyType: BodyMultipart, FormFields: []FormField{{Name: "description", Value: "hello upload"}, {Name: "image", Type: "file", FilePath: path}}}).Build(context.Background())
-	if err != nil {
-		t.Fatal(err)
-	}
-	response, err := Execute(server.Client(), req)
-	if err != nil {
-		t.Fatal(err)
-	}
-	if string(response.Body) != `{"ok":true}` {
-		t.Fatal("upload response missing")
+	for _, pathSuffix := range []string{"/307", "/308"} {
+		template := Request{Method: "POST", URL: server.URL + pathSuffix, BodyType: BodyMultipart, FormFields: []FormField{{Name: "description", Value: "hello upload"}, {Name: "image", Type: "file", FilePath: path}}}
+		req, err := template.Build(context.Background())
+		if err != nil {
+			t.Fatal(err)
+		}
+		client := *server.Client()
+		var hops []RedirectHop
+		ConfigureRedirects(&client, template, false, func(hop RedirectHop) { hops = append(hops, hop) })
+		response, err := Execute(&client, req)
+		if err != nil {
+			t.Fatal(err)
+		}
+		if string(response.Body) != `{"ok":true}` || len(hops) != 1 || hops[0].Method != "POST" {
+			t.Fatal("upload response or redirect hop missing")
+		}
 	}
 }

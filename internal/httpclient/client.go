@@ -28,12 +28,13 @@ type Auth struct {
 }
 
 type Request struct {
-	Headers    []HeaderField     `json:",omitempty"`
-	BodyType   string            `json:",omitempty"`
-	FormFields []FormField       `json:",omitempty"`
-	Extract    []extraction.Rule `json:",omitempty"`
-	Method     string
-	URL        string
+	StopAtRedirect bool              `json:",omitempty"`
+	Headers        []HeaderField     `json:",omitempty"`
+	BodyType       string            `json:",omitempty"`
+	FormFields     []FormField       `json:",omitempty"`
+	Extract        []extraction.Rule `json:",omitempty"`
+	Method         string
+	URL            string
 	// Params contains one unescaped key=value pair per line. Duplicate keys are allowed.
 	Params  string
 	Body    string
@@ -46,6 +47,7 @@ const MaxResponseBytes = 16 << 20
 var ErrResponseTooLarge = errors.New("response exceeds the 16 MiB limit; only the first 16 MiB were retained")
 
 type Response struct {
+	Redirects  []RedirectHop `json:",omitempty"`
 	Incomplete bool
 	BodyFile   string `json:",omitempty"` // Used by local workspace storage.
 

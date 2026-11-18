@@ -159,3 +159,9 @@ The existing 16 MiB capture limit and response-body persistence remain unchanged
 Use **Request headers** to add, disable, or remove header rows. Enabled rows support variables in names and values and preserve repeated values. An explicit Content-Type overrides the body default except in multipart mode, where Relay generates the boundary. Use either the Authentication panel or a single Authorization header. Relay manages transport framing and strips explicit custom headers and credentials when redirects leave the original origin.
 
 cURL import preserves supported explicit headers and the Accept header implied by `--json`. **Outgoing request** shows the initial application-level request from the last send. It masks custom header values, credentials, URL query values, and interpolated URLs. It displays application-level headers before transport defaults are applied.
+
+## Redirect controls and timeline
+
+Requests follow redirects by default. Enable **Stop at first redirect** in **Settings** to inspect the first redirect response, including its headers and retained body. The setting is saved with the request.
+
+The **Redirects** tab lists each redirect decision with the status, proposed next method, and destination. It includes the final decision when Relay stops following. The viewer masks query values and hides destinations for session-sensitive requests. On a transport failure, any recorded hops remain visible in the active tab. Custom headers and credentials stay on the original origin.
