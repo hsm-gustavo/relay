@@ -85,7 +85,11 @@ jobs:
             version_flags=(-app-version "$label")
           fi
 
-          fyne package -os "$TARGET_OS" -release -app-build "$GITHUB_RUN_NUMBER" "${version_flags[@]}"
+          if [[ "$TARGET_OS" == linux ]]; then
+            sh ../../scripts/package-linux.sh -app-build "$GITHUB_RUN_NUMBER" "${version_flags[@]}"
+          else
+            fyne package -os "$TARGET_OS" -release -app-build "$GITHUB_RUN_NUMBER" "${version_flags[@]}"
+          fi
           test -s "$PACKAGE_FILE"
           mkdir -p "$RELEASE_ASSETS"
           mv "$PACKAGE_FILE" "$RELEASE_ASSETS/Relay-$label-$TARGET_OS-amd64.$PACKAGE_EXTENSION"

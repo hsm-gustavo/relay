@@ -33,14 +33,15 @@ go vet ./...
 
 ## Package the desktop app
 
-Install the [Fyne CLI](https://docs.fyne.io/started/packaging/) with `go install fyne.io/tools/cmd/fyne@v1.7.4`. Run packaging from the main package directory so Fyne reads `FyneApp.toml` and the bundled `Icon.png`.
+Install the [Fyne CLI](https://docs.fyne.io/started/packaging/) with `go install fyne.io/tools/cmd/fyne@v1.7.4`. Build the Linux archive from the repository root.
 
 ```sh
-cd cmd/relay
-fyne package -os linux -release
+sh scripts/package-linux.sh
 ```
 
-Use `-os darwin` on macOS or `-os windows` on Windows with the corresponding native toolchain. For a release, override the package version and build number with `-app-version` and `-app-build` as needed. The same PNG is embedded for regular `go run ./cmd/relay` and Go builds.
+The archive is written to `cmd/relay/Relay.tar.xz`. Extract it, then run `make user-install` from the extracted `relay` directory to install Relay and its launcher icon for your account.
+
+On macOS and Windows, package from `cmd/relay` with `fyne package -os darwin -release` or `fyne package -os windows -release` using the corresponding native toolchain. Override the package version and build number with `-app-version` and `-app-build` as needed. The same PNG is embedded for regular `go run ./cmd/relay` and Go builds.
 
 ## CI and GitHub releases
 
