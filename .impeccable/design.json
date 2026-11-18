@@ -1,0 +1,306 @@
+{
+  "schemaVersion": 2,
+  "generatedAt": "2026-11-18T16:29:48+00:00",
+  "title": "Design System: Relay website",
+  "extensions": {
+    "colorMeta": {
+      "paper": {
+        "role": "neutral",
+        "displayName": "Paper White",
+        "tonalRamp": [
+          "oklch(15% 0.0067 295.45)",
+          "oklch(26% 0.0067 295.45)",
+          "oklch(37% 0.0067 295.45)",
+          "oklch(49% 0.0067 295.45)",
+          "oklch(60% 0.0067 295.45)",
+          "oklch(72% 0.0067 295.45)",
+          "oklch(83% 0.0067 295.45)",
+          "oklch(95% 0.0067 295.45)"
+        ]
+      },
+      "hero": {
+        "role": "neutral",
+        "displayName": "Hero Lavender",
+        "tonalRamp": [
+          "oklch(15% 0.0341 294.89)",
+          "oklch(26% 0.0341 294.89)",
+          "oklch(37% 0.0341 294.89)",
+          "oklch(49% 0.0341 294.89)",
+          "oklch(60% 0.0341 294.89)",
+          "oklch(72% 0.0341 294.89)",
+          "oklch(83% 0.0341 294.89)",
+          "oklch(95% 0.0341 294.89)"
+        ]
+      },
+      "inset": {
+        "role": "neutral",
+        "displayName": "Lavender Inset",
+        "tonalRamp": [
+          "oklch(15% 0.0189 295.86)",
+          "oklch(26% 0.0189 295.86)",
+          "oklch(37% 0.0189 295.86)",
+          "oklch(49% 0.0189 295.86)",
+          "oklch(60% 0.0189 295.86)",
+          "oklch(72% 0.0189 295.86)",
+          "oklch(83% 0.0189 295.86)",
+          "oklch(95% 0.0189 295.86)"
+        ]
+      },
+      "line": {
+        "role": "neutral",
+        "displayName": "Lavender Rule",
+        "tonalRamp": [
+          "oklch(15% 0.0457 296.79)",
+          "oklch(26% 0.0457 296.79)",
+          "oklch(37% 0.0457 296.79)",
+          "oklch(49% 0.0457 296.79)",
+          "oklch(60% 0.0457 296.79)",
+          "oklch(72% 0.0457 296.79)",
+          "oklch(83% 0.0457 296.79)",
+          "oklch(95% 0.0457 296.79)"
+        ]
+      },
+      "ink": {
+        "role": "neutral",
+        "displayName": "Blue-Black Ink",
+        "tonalRamp": [
+          "oklch(15% 0.0546 294.62)",
+          "oklch(26% 0.0546 294.62)",
+          "oklch(37% 0.0546 294.62)",
+          "oklch(49% 0.0546 294.62)",
+          "oklch(60% 0.0546 294.62)",
+          "oklch(72% 0.0546 294.62)",
+          "oklch(83% 0.0546 294.62)",
+          "oklch(95% 0.0546 294.62)"
+        ]
+      },
+      "muted": {
+        "role": "neutral",
+        "displayName": "Muted Violet",
+        "tonalRamp": [
+          "oklch(15% 0.0534 298.47)",
+          "oklch(26% 0.0534 298.47)",
+          "oklch(37% 0.0534 298.47)",
+          "oklch(49% 0.0534 298.47)",
+          "oklch(60% 0.0534 298.47)",
+          "oklch(72% 0.0534 298.47)",
+          "oklch(83% 0.0534 298.47)",
+          "oklch(95% 0.0534 298.47)"
+        ]
+      },
+      "link": {
+        "role": "secondary",
+        "displayName": "Violet Link",
+        "tonalRamp": [
+          "oklch(15% 0.1304 288.80)",
+          "oklch(26% 0.1304 288.80)",
+          "oklch(37% 0.1304 288.80)",
+          "oklch(49% 0.1304 288.80)",
+          "oklch(60% 0.1304 288.80)",
+          "oklch(72% 0.1304 288.80)",
+          "oklch(83% 0.1304 288.80)",
+          "oklch(95% 0.1304 288.80)"
+        ]
+      },
+      "action": {
+        "role": "primary",
+        "displayName": "Citron",
+        "tonalRamp": [
+          "oklch(15% 0.1726 114.26)",
+          "oklch(26% 0.1726 114.26)",
+          "oklch(37% 0.1726 114.26)",
+          "oklch(49% 0.1726 114.26)",
+          "oklch(60% 0.1726 114.26)",
+          "oklch(72% 0.1726 114.26)",
+          "oklch(83% 0.1726 114.26)",
+          "oklch(95% 0.1726 114.26)"
+        ]
+      },
+      "action-hover": {
+        "role": "primary",
+        "displayName": "Citron Hover",
+        "tonalRamp": [
+          "oklch(15% 0.1779 115.01)",
+          "oklch(26% 0.1779 115.01)",
+          "oklch(37% 0.1779 115.01)",
+          "oklch(49% 0.1779 115.01)",
+          "oklch(60% 0.1779 115.01)",
+          "oklch(72% 0.1779 115.01)",
+          "oklch(83% 0.1779 115.01)",
+          "oklch(95% 0.1779 115.01)"
+        ]
+      },
+      "console": {
+        "role": "neutral",
+        "displayName": "Console",
+        "tonalRamp": [
+          "oklch(15% 0.0481 291.56)",
+          "oklch(26% 0.0481 291.56)",
+          "oklch(37% 0.0481 291.56)",
+          "oklch(49% 0.0481 291.56)",
+          "oklch(60% 0.0481 291.56)",
+          "oklch(72% 0.0481 291.56)",
+          "oklch(83% 0.0481 291.56)",
+          "oklch(95% 0.0481 291.56)"
+        ]
+      },
+      "console-text": {
+        "role": "neutral",
+        "displayName": "Console Text",
+        "tonalRamp": [
+          "oklch(15% 0.0189 295.87)",
+          "oklch(26% 0.0189 295.87)",
+          "oklch(37% 0.0189 295.87)",
+          "oklch(49% 0.0189 295.87)",
+          "oklch(60% 0.0189 295.87)",
+          "oklch(72% 0.0189 295.87)",
+          "oklch(83% 0.0189 295.87)",
+          "oklch(95% 0.0189 295.87)"
+        ]
+      }
+    },
+    "typographyMeta": {
+      "display": {
+        "displayName": "Display",
+        "purpose": "Product heading in the introduction."
+      },
+      "headline": {
+        "displayName": "Headline",
+        "purpose": "Headings for guide sections."
+      },
+      "title": {
+        "displayName": "Title",
+        "purpose": "Guide subsections and platform names."
+      },
+      "body": {
+        "displayName": "Body",
+        "purpose": "Explanations and instructions."
+      },
+      "label": {
+        "displayName": "Label",
+        "purpose": "Platform availability beneath the download."
+      },
+      "mono": {
+        "displayName": "Monospace",
+        "purpose": "Command and URL examples."
+      }
+    },
+    "breakpoints": [
+      {
+        "name": "platform-stack",
+        "value": "66rem"
+      },
+      {
+        "name": "page-stack",
+        "value": "52rem"
+      },
+      {
+        "name": "compact",
+        "value": "30rem"
+      }
+    ]
+  },
+  "components": [
+    {
+      "name": "Download link",
+      "kind": "button",
+      "refersTo": "button-primary",
+      "description": "Citron action for navigating to the installation section or the latest release.",
+      "html": "<a class=\"ds-download\" href=\"#install\">Download Relay</a>",
+      "css": ".ds-download { display: inline-flex; box-sizing: border-box; min-height: 2.9rem; align-items: center; padding: 0.55rem 1rem; border: 1px solid var(--ink, #211936); border-radius: 0.35rem; background: var(--action, #e5f35b); color: var(--ink, #211936); font: 700 1rem/1.35 var(--sans, system-ui, sans-serif); text-decoration: none; }\n.ds-download:hover { background: var(--action-hover, #d8e847); }\n.ds-download:focus-visible { outline: 2px solid var(--link, #423081); outline-offset: 4px; }"
+    },
+    {
+      "name": "Header navigation",
+      "kind": "nav",
+      "refersTo": "header-link",
+      "description": "Compact links for the guide and source repository.",
+      "html": "<nav class=\"ds-header-links\" aria-label=\"Main navigation\">\n  <a href=\"#documentation\">Guide</a>\n  <a href=\"https://github.com/hsm-gustavo/relay\">GitHub</a>\n</nav>",
+      "css": ".ds-header-links { display: flex; flex-wrap: wrap; align-items: center; gap: 0.25rem 1.6rem; font: 650 0.9rem/1.65 var(--sans, system-ui, sans-serif); }\n.ds-header-links a { display: inline-flex; min-height: 2.75rem; align-items: center; color: var(--ink, #211936); text-decoration: none; }\n.ds-header-links a:hover { text-decoration: underline; text-underline-offset: 0.22em; text-decoration-thickness: 2px; }\n.ds-header-links a:focus-visible { outline: 2px solid var(--link, #423081); outline-offset: 4px; }\n@media (max-width: 30rem) { .ds-header-links { gap: 0.8rem; } }"
+    },
+    {
+      "name": "Guide index links",
+      "kind": "nav",
+      "refersTo": "guide-index-link",
+      "description": "Guide destinations with a fine left rule and pale hover fill.",
+      "html": "<nav class=\"ds-guide-index\" aria-label=\"User guide\">\n  <ul>\n    <li><a href=\"#install\">Install Relay</a></li>\n    <li><a href=\"#first-request\">Send your first request</a></li>\n    <li><a href=\"#responses\">Inspect responses</a></li>\n  </ul>\n</nav>",
+      "css": ".ds-guide-index ul { margin: 0; padding: 0; list-style: none; }\n.ds-guide-index a { display: flex; box-sizing: border-box; min-height: 2.75rem; align-items: center; padding: 0.35rem 0.55rem; border-left: 1px solid var(--line, #bcb4d4); color: var(--muted, #534969); font: 400 0.9rem/1.65 var(--sans, system-ui, sans-serif); text-decoration: none; }\n.ds-guide-index a:hover { background: var(--inset, #eeebf9); color: var(--link, #423081); text-decoration: underline; text-underline-offset: 0.22em; text-decoration-thickness: 2px; }\n.ds-guide-index a:focus-visible { outline: 2px solid var(--link, #423081); outline-offset: -2px; }\n@media (max-width: 52rem) { .ds-guide-index ul { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); } }"
+    },
+    {
+      "name": "Workspace topic index",
+      "kind": "custom",
+      "refersTo": "workspace-disclosure-open",
+      "description": "Grouped native disclosures that direct readers to the relevant guide topic.",
+      "html": "<div class=\"ds-workspace-topics\">\n  <details name=\"ds-workspace-topic\">\n    <summary>Request editor</summary>\n    <p>Build a request in its own tab. Set headers, add a body, or import an existing cURL command.</p>\n    <a href=\"#build-requests\">Build requests</a>\n  </details>\n  <details name=\"ds-workspace-topic\" open>\n    <summary>Response viewer</summary>\n    <p>See the status and timing, then search the body or explore JSON as a tree.</p>\n    <a href=\"#responses\">Inspect responses</a>\n  </details>\n  <details name=\"ds-workspace-topic\">\n    <summary>Local collections</summary>\n    <p>Save requests together and reopen past responses from your workspace history.</p>\n    <a href=\"#collections\">Manage collections</a>\n  </details>\n</div>",
+      "css": ".ds-workspace-topics { max-width: 17rem; border-bottom: 1px solid var(--line, #bcb4d4); background: var(--hero, #e5e0f9); color: var(--ink, #211936); font: 400 1rem/1.65 var(--sans, system-ui, sans-serif); }\n.ds-workspace-topics details { border-top: 1px solid var(--line, #bcb4d4); }\n.ds-workspace-topics summary { box-sizing: border-box; min-height: 2.75rem; padding-block: 0.6rem; cursor: pointer; font-weight: 700; }\n.ds-workspace-topics summary::marker, .ds-workspace-topics details[open] summary { color: var(--link, #423081); }\n.ds-workspace-topics p { margin: 0 0 0.6rem; color: var(--muted, #534969); font-size: 0.91rem; }\n.ds-workspace-topics a { display: inline-block; margin-bottom: 0.8rem; color: var(--link, #423081); font-size: 0.86rem; font-weight: 700; text-decoration-thickness: 1px; text-underline-offset: 0.22em; }\n.ds-workspace-topics a:hover { color: var(--ink, #211936); text-decoration-thickness: 2px; }\n.ds-workspace-topics :is(a, summary):focus-visible { outline: 2px solid var(--link, #423081); outline-offset: 4px; }"
+    },
+    {
+      "name": "Command panel",
+      "kind": "custom",
+      "refersTo": "command-panel",
+      "description": "Dark, scrollable treatment for commands and request examples.",
+      "html": "<div class=\"ds-console\">\n  <pre><code>tar -xJf Relay-1.4.1-linux-amd64.tar.xz\ncd relay\nmake user-install</code></pre>\n</div>",
+      "css": ".ds-console { display: grid; grid-template-columns: minmax(0, 1fr); border-radius: 0.45rem; background: var(--console, #25203a); color: var(--console-text, #f4f1ff); }\n.ds-console pre { min-width: 0; overflow: auto; margin: 0; padding: 0.85rem 1rem; font: 0.84rem/1.6 var(--mono, ui-monospace, SFMono-Regular, Consolas, monospace); scrollbar-color: var(--line, #bcb4d4) var(--console, #25203a); }\n.ds-console code { font: inherit; }\n.ds-console pre:focus-visible { outline: 2px solid var(--action, #e5f35b); outline-offset: -2px; }"
+    },
+    {
+      "name": "Copy button",
+      "kind": "button",
+      "refersTo": "button-copy",
+      "description": "Compact clipboard control for dark command panels.",
+      "html": "<button type=\"button\" class=\"ds-copy\">Copy</button>",
+      "css": ".ds-copy { min-width: 3.8rem; min-height: 2rem; padding-inline: 0.45rem; border: 1px solid #aaa0c9; border-radius: 0.25rem; background: var(--console, #25203a); color: var(--console-text, #f4f1ff); font: 650 0.75rem/1.3 var(--sans, system-ui, sans-serif); cursor: pointer; }\n.ds-copy:hover { background: var(--inset, #eeebf9); color: var(--ink, #211936); }\n.ds-copy:focus-visible { outline: 2px solid var(--action, #e5f35b); outline-offset: -2px; }"
+    },
+    {
+      "name": "Guide note",
+      "kind": "custom",
+      "refersTo": "guide-note",
+      "description": "Pale rectangular callout for context within a guide section.",
+      "html": "<div class=\"ds-note\">\n  <p><strong>Testing a local server?</strong> Enter a URL such as <code>127.0.0.1:8080/users</code>.</p>\n</div>",
+      "css": ".ds-note { padding: 0.85rem 1rem; background: var(--inset, #eeebf9); color: var(--muted, #534969); font: 400 1rem/1.65 var(--sans, system-ui, sans-serif); }\n.ds-note p { max-width: 70ch; margin: 0; }\n.ds-note strong, .ds-note code { color: var(--ink, #211936); }\n.ds-note code { padding: 0.08em 0.22em; border-radius: 0.2rem; background: var(--inset, #eeebf9); font: 0.87em var(--mono, ui-monospace, SFMono-Regular, Consolas, monospace); overflow-wrap: anywhere; }"
+    },
+    {
+      "name": "Inline code and keycaps",
+      "kind": "custom",
+      "refersTo": "inline-code",
+      "description": "Compact monospace treatment for literal values and keyboard controls.",
+      "html": "<p class=\"ds-inline\"><code>{{base_url}}/users</code> · <kbd>Ctrl</kbd> + <kbd>F</kbd></p>",
+      "css": ".ds-inline { margin: 0; color: var(--muted, #534969); font: 400 1rem/1.65 var(--sans, system-ui, sans-serif); }\n.ds-inline :is(code, kbd) { padding: 0.08em 0.22em; border-radius: 0.2rem; background: var(--inset, #eeebf9); color: var(--ink, #211936); font: 0.87em var(--mono, ui-monospace, SFMono-Regular, Consolas, monospace); overflow-wrap: anywhere; }\n.ds-inline kbd { border: 1px solid var(--line, #bcb4d4); }"
+    }
+  ],
+  "narrative": {
+    "northStar": "The Software Catalog",
+    "overview": "The website reads like a software catalog printed on lavender and paper white. A wide, tightly set headline identifies Relay. Fine rules organize the page, while a citron download link and a real workspace capture give visitors two clear places to look.\n\nIn the guide, blue-black headings and a single reading column carry the instructions. A compact index keeps sections within reach. Dark command blocks let readers spot examples while skimming.",
+    "keyCharacteristics": [
+      "Lavender presentation and paper-white reading surfaces.",
+      "Large Bricolage Grotesque headings and compact system type for controls.",
+      "Thin rules, modest corners, and flat surfaces.",
+      "Original-color workspace imagery with a citron region outline."
+    ],
+    "rules": [
+      {
+        "name": "The Citron Rule",
+        "body": "Use citron to mark the download, locate a region in the workspace image, or make a keyboard or selection state legible.",
+        "section": "colors"
+      },
+      {
+        "name": "The Display Type Rule",
+        "body": "Use the display face for the wordmark, product heading, and guide headings. Use system type for explanations and controls.",
+        "section": "typography"
+      },
+      {
+        "name": "The Flat Surface Rule",
+        "body": "Separate regions with a change in fill, a fine rule, or space. Keep shadows out of the visual hierarchy.",
+        "section": "elevation"
+      }
+    ],
+    "dos": [
+      "Do retain the workspace capture’s original colors and match each close-up crop to its topic.",
+      "Do open the guide with a legible index and keep its deep links clear of the sticky header.",
+      "Do keep code and commands readable in narrow layouts."
+    ],
+    "donts": [
+      "Don’t fill routine guide links with citron.",
+      "Don’t tint the workspace image or obscure it with decorative overlays.",
+      "Don’t turn platform sections or guide disclosures into elevated cards."
+    ]
+  }
+}
